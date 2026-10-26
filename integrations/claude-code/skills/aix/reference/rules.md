@@ -36,6 +36,26 @@
   continue only after they choose to fix .gitignore or to run with --accept-ignore. Never edit .gitignore or pass
   --accept-ignore on your own. A card line `aix ignore-check: N new high-severity ...` (a new .env, say) is the same: ask.
 
+## Running agents and builders cheaply (measured: subagents were 84% of a day's usage, 83% of it context re-reads)
+
+Cost per agent is roughly turns x context size, since every turn re-sends the whole conversation. So:
+
+- **Give the agent the answer, not the search.** The lead runs `brief`/`impact`/`callers` once and puts exact `file:line`
+  ranges, the fix sketch and the check to run in the agent's brief; the agent reads those ranges with `aix code F:A-B`
+  instead of exploring. Exploration turns are most of a builder's cost.
+- **Small batches.** About 5-8 findings in disjoint files, aiming to finish in ~100 turns, one phase per agent; start a fresh
+  agent for the next phase instead of reviving a long one. Two small agents cost less than one large one.
+- **Cheapest model that does the job.** A mid-size model for ordinary fixes, the smallest for mechanical edits; the largest only
+  for design-heavy or risky changes.
+- **Verify with a script, land with the gate once.** Each agent runs one short check script (prints `N checks, M BUG`) and the
+  targeted tests; the lead runs the full gate once per batch. Park test/build output with `aix put`.
+- **A turn cap.** Tell each agent to stop at ~100 turns and report what it has. Set the compaction window (Claude Code
+  `autoCompactWindow`, e.g. 200000) so contexts reset before they grow past a few hundred thousand tokens; with the default
+  1M window it never fires.
+- **Scripts over reading.** Anything that counts, compares or scans many files or rows is a script (`aix script <words>`
+  finds existing ones); agents return script paths and verdict lines, not prose.
+- At most 3 agents at once; brief them with `--repo/--db` and `@set` names, never pasted files or logs.
+
 ## Rules of thumb
 
 - Start with `brief`; read only the ranges it cites with `aix code FILE:A-B`.

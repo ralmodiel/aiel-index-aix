@@ -1,0 +1,14 @@
+[
+ {"q":"where is the average of marks rounded","files":["service/Grades.java"]},
+ {"q":"who may approve a membership request","files":["api/MemberResource.java"]},
+ {"q":"how are double bookings of a room detected","files":["service/Booking.java"]},
+ {"q":"where are receipt numbers checked for duplicates","files":["service/Receipts.java"]},
+ {"q":"how is a picture saved to the bucket","files":["service/Storage.java"]},
+ {"q":"how do we send notifications to a user's phones","files":["service/Notifier.java"]},
+ {"q":"how much does a customer still owe on an invoice","files":["service/Fees.java"]},
+ {"q":"how are exported tables marked as not official","files":["api/ExportResource.java"]},
+ {"q":"where is the text like '5 min ago' built","files":["web/dates.ts"]},
+ {"q":"how does the app renew the login before it expires","files":["web/session.ts"]},
+ {"q":"how are stale log files removed","files":["tools/cleanup.py"]},
+ {"q":"find a number in a sorted list","files":["tools/search.go"]}
+]

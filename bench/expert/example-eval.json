@@ -1,0 +1,52 @@
+{
+ "repo": "spring-petclinic",
+ "head": "500158f",
+ "line_tolerance": 3,
+ "base": "",
+ "note": "Example for the public spring-petclinic clone. gt paths are repo-relative (base is empty). Per question: cmd = aix argv, base = grep baseline. See the docstring of score.py for every field.",
+ "closures": [
+  [
+   "impact",
+   "Owner.addVisit"
+  ]
+ ],
+ "build_touch_glob": "*OwnerController.java",
+ "questions": [
+  {
+   "id": "q01",
+   "item": 1,
+   "q": "Who calls Pet.addVisit?",
+   "cmd": [
+    "callers",
+    "Pet.addVisit"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/owner/Owner.java:185",
+    "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java:79"
+   ],
+   "must": [],
+   "base": [
+    "grep",
+    "addVisit"
+   ]
+  },
+  {
+   "id": "q02",
+   "item": 1,
+   "q": "Who calls Owner.addVisit?",
+   "cmd": [
+    "callers",
+    "Owner.addVisit"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java:108",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:229"
+   ],
+   "must": [],
+   "base": [
+    "grep",
+    "addVisit"
+   ]
+  }
+ ]
+}

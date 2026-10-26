@@ -1,0 +1,13 @@
+<rewriter xmlns="http://marklogic.com/xdmp/rewriter">
+  <!-- <match-path matches="^/commented$"><dispatch>/no.xqy</dispatch></match-path> -->
+  <match-path matches="^/app/(\w+)$">
+    <match-method any-of="GET POST">
+      <add-query-param name="page">$1</add-query-param>
+      <dispatch>/app/main.xqy</dispatch>
+    </match-method>
+  </match-path>
+  <match-path prefix="/jobs/">
+    <set-path>/app/job.xqy</set-path>
+    <dispatch/>
+  </match-path>
+</rewriter>

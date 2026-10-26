@@ -1,0 +1,67 @@
+{
+ "note": "SK-15: same questions before (97d11ed) and after",
+ "before": {
+  "summary": {
+   "spring-petclinic": {
+    "precision": 0.969,
+    "recall": 0.897,
+    "must_ok": "1/2"
+   },
+   "full-stack-fastapi-template": {
+    "precision": 0.375,
+    "recall": 0.375,
+    "must_ok": "0/1"
+   },
+   "node-express-realworld-example-app": {
+    "precision": 0.82,
+    "recall": 0.82,
+    "must_ok": "1/3"
+   },
+   "chi": {
+    "precision": 0.729,
+    "recall": 0.767,
+    "must_ok": "0/0"
+   },
+   "ALL": {
+    "precision": 0.678,
+    "recall": 0.665
+   }
+  },
+  "ranges": {
+   "go_members_checked": 428,
+   "go_wrong_end": 3
+  }
+ },
+ "after": {
+  "summary": {
+   "spring-petclinic": {
+    "precision": 0.975,
+    "recall": 0.983,
+    "must_ok": "2/2"
+   },
+   "full-stack-fastapi-template": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "must_ok": "1/1"
+   },
+   "node-express-realworld-example-app": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "must_ok": "3/3"
+   },
+   "chi": {
+    "precision": 0.983,
+    "recall": 0.981,
+    "must_ok": "0/0"
+   },
+   "ALL": {
+    "precision": 0.991,
+    "recall": 0.992
+   }
+  },
+  "ranges": {
+   "go_members_checked": 427,
+   "go_wrong_end": 0
+  }
+ }
+}

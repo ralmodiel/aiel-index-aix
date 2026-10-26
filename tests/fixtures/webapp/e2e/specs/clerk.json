@@ -1,0 +1,13 @@
+{
+  "role": "clerk",
+  "login": "e2e.clerk@example.test",
+  "scenarios": [
+    {"id": "orders-cancel", "title": "Clerk cancels an open order", "steps": [
+      {"goto": "/orders"},
+      {"expectText": "Open orders"},
+      {"click": {"role": "button", "name": "Cancel order"}},
+      {"api": {"get": "/api/orders", "expectStatus": 200}}
+    ]},
+    {"id": "nav", "title": "Clerk sees the Orders menu", "steps": [{"goto": "/orders?tab=all"}, {"navPresent": "Orders"}, {"navAbsent": "Reports"}]}
+  ]
+}

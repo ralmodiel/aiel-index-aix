@@ -1,0 +1,11 @@
+# name	url	ref (tag or branch, for humans)	commit (pinned)	lang	probe symbol	probe grep regex
+linux	https://github.com/torvalds/linux	v6.19	05f7e89ab9731565d8a62e3b5d1ec206485eeb0b	c	vfs_read	kmem_cache_alloc
+django	https://github.com/django/django	5.2.7	3cff3209e35a560f94801d428cf7f2a3ecb2a051	python	get_object_or_404	get_object_or_404
+chi	https://github.com/go-chi/chi	master	9f8adb1aabaa8a91180a821111d3f8e668d1c0bf	go	routeHTTP	ServeHTTP
+httpie	https://github.com/httpie/cli	master	5b604c37c6c67e18e7c3e9aee6c88a8c22b98345	python	collect_messages	collect_messages
+trpc	https://github.com/trpc/trpc	main	8d09833c76791b2ea7270af174fdab9f1408aeb8	typescript	createTRPCProxyClient	createTRPCProxyClient
+meilisearch	https://github.com/meilisearch/meilisearch	main	7b6f9f39bd91b04d4551673780cfeb31cb3f5e7b	rust	execute_search	execute_search
+petclinic	https://github.com/spring-projects/spring-petclinic	main	500158f732419217507c7656904b8e6aa1bcc0d6	java	findById	findById
+json	https://github.com/nlohmann/json	develop	2a56afc714d485870ae41cb1ac4fb0556f86726b	cpp	parse	from_json
+redis	https://github.com/redis/redis	unstable	ad49ff0d92048fb10d0cb08b074422dc076b2d1f	c	lookupKeyRead	lookupKeyRead
+laravel	https://github.com/laravel/framework	13.x	5d7797528723107cd4f495326838a7d7d67fbb20	php	dispatch	dispatch

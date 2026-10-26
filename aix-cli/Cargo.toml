@@ -1,0 +1,35 @@
+[package]
+name = "aix-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "aix"
+path = "src/main.rs"
+
+[features]
+default = ["mcp"]
+# the stdio MCP server (`aix mcp`) and its async stack; --no-default-features drops tokio, rmcp and schemars
+mcp = ["dep:rmcp", "dep:tokio", "dep:schemars"]
+
+[dependencies]
+aix-core = { path = "../aix-core" }
+anyhow.workspace = true
+regex.workspace = true
+aix-extract = { path = "../aix-extract" }
+clap.workspace = true
+serde.workspace = true
+# preserve_order: aix init rewrites a user's .claude/settings*.json and .mcp.json without reordering their keys
+serde_json = { workspace = true, features = ["preserve_order"] }
+sha1_smol.workspace = true
+sha2.workspace = true
+rmcp = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+schemars = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile.workspace = true
+rusqlite.workspace = true

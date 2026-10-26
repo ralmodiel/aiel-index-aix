@@ -1,0 +1,7 @@
+target/
+.aix/
+/.claude/
+
+# aix ignore-check (2026-10-25)
+.env*
+.DS_Store

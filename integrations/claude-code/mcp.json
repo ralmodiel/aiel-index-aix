@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "aix": {
+      "type": "stdio",
+      "command": "aix",
+      "args": ["mcp"]
+    }
+  }
+}

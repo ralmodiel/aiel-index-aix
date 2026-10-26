@@ -1,0 +1,1038 @@
+{
+ "heads": {
+  "spring-petclinic": "500158f",
+  "full-stack-fastapi-template": "b1125d8",
+  "node-express-realworld-example-app": "30b68e1",
+  "chi": "9f8adb1"
+ },
+ "questions": [
+  {
+   "id": "j01",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "OwnerRepository.findById"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:181",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:67",
+    "src/main/java/org/springframework/samples/petclinic/owner/PetController.java:69",
+    "src/main/java/org/springframework/samples/petclinic/owner/PetController.java:83",
+    "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java:66",
+    "src/test/java/org/springframework/samples/petclinic/PetClinicConcurrencyTests.java:114",
+    "src/test/java/org/springframework/samples/petclinic/PetClinicConcurrencyTests.java:43",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:310",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:99",
+    "src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java:86",
+    "src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java:65",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:100",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:131",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:141",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:160",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:176",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:188",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:199",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:220",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:239",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:256",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:285",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:296"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "j02",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Pet.addVisit"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/owner/Owner.java:185",
+    "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java:79"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "j03",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Owner.addVisit"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java:108",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:229"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "j04",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "PetTypeRepository.findPetTypes"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/owner/PetController.java:64",
+    "src/main/java/org/springframework/samples/petclinic/owner/PetTypeFormatter.java:53",
+    "src/test/java/org/springframework/samples/petclinic/owner/PetControllerTests.java:75",
+    "src/test/java/org/springframework/samples/petclinic/owner/PetTypeFormatterTests.java:65",
+    "src/test/java/org/springframework/samples/petclinic/owner/PetTypeFormatterTests.java:72",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:149",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:168",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:262",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:282"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": [],
+   "note": "re-pinned SK-18: PetTypeFormatter.java:53 (`Collection<PetType> findPetTypes = this.types.findPetTypes();`) is a real call; the old ground-truth regex excluded it as a declaration"
+  },
+  {
+   "id": "j05",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "OwnerRepository.findByLastNameStartingWith"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:145",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:177",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:193",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:202",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:210",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:216",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:222",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:228",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:96",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:112",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:124",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:91",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:94"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "j06",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Owner.getPet"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/owner/Owner.java:121",
+    "src/main/java/org/springframework/samples/petclinic/owner/Owner.java:181",
+    "src/main/java/org/springframework/samples/petclinic/owner/PetController.java:111",
+    "src/main/java/org/springframework/samples/petclinic/owner/PetController.java:152",
+    "src/main/java/org/springframework/samples/petclinic/owner/PetController.java:189",
+    "src/main/java/org/springframework/samples/petclinic/owner/PetController.java:86",
+    "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java:70",
+    "src/test/java/org/springframework/samples/petclinic/PetClinicConcurrencyTests.java:51",
+    "src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java:102",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:181",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:192",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:202",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:224",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:243",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:311",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:312"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "j07",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "VetRepository.findAll"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/vet/VetController.java:69",
+    "src/main/java/org/springframework/samples/petclinic/vet/VetController.java:77",
+    "src/test/java/org/springframework/samples/petclinic/MySqlIntegrationTests.java:63",
+    "src/test/java/org/springframework/samples/petclinic/MySqlIntegrationTests.java:64",
+    "src/test/java/org/springframework/samples/petclinic/PetClinicIntegrationTests.java:48",
+    "src/test/java/org/springframework/samples/petclinic/PetClinicIntegrationTests.java:49",
+    "src/test/java/org/springframework/samples/petclinic/PostgresIntegrationTests.java:83",
+    "src/test/java/org/springframework/samples/petclinic/PostgresIntegrationTests.java:84",
+    "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java:208",
+    "src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java:78",
+    "src/test/java/org/springframework/samples/petclinic/vet/VetControllerTests.java:79"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "j08",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "callees",
+   "cmd": [
+    "callees",
+    "OwnerController.processFindForm"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/model/BaseEntity.java:39",
+    "src/main/java/org/springframework/samples/petclinic/model/Person.java:49",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:132",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:141"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "j09",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "outline",
+   "cmd": [
+    "outline",
+    "OwnerController.java"
+   ],
+   "gt": [
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:132",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:141",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:148",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:153",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:178",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:48",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:51",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:53",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:55",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:59",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:64",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:72",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:77",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:89",
+    "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java:94"
+   ],
+   "tol": 1,
+   "must": [],
+   "mustnot": [],
+   "note": "re-pinned SK-18: the two private fields (VIEWS_OWNER_CREATE_OR_UPDATE_FORM, owners) are members too; the class header (line 48) is the enclosing member"
+  },
+  {
+   "id": "j10",
+   "repo": "spring-petclinic",
+   "lang": "java",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "OwnerController.setAllowedFields"
+   ],
+   "gt": [],
+   "tol": 0,
+   "must": [
+    "framework",
+    "InitBinder"
+   ],
+   "mustnot": []
+  },
+  {
+   "id": "p01",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "crud.create_user"
+   ],
+   "gt": [
+    "backend/app/api/routes/users.py:158",
+    "backend/app/api/routes/users.py:68",
+    "backend/app/core/db.py:33",
+    "backend/tests/api/routes/test_login.py:94",
+    "backend/tests/api/routes/test_users.py:153",
+    "backend/tests/api/routes/test_users.py:185",
+    "backend/tests/api/routes/test_users.py:190",
+    "backend/tests/api/routes/test_users.py:288",
+    "backend/tests/api/routes/test_users.py:364",
+    "backend/tests/api/routes/test_users.py:403",
+    "backend/tests/api/routes/test_users.py:408",
+    "backend/tests/api/routes/test_users.py:424",
+    "backend/tests/api/routes/test_users.py:469",
+    "backend/tests/api/routes/test_users.py:514",
+    "backend/tests/api/routes/test_users.py:66",
+    "backend/tests/api/routes/test_users.py:94",
+    "backend/tests/crud/test_user.py:15",
+    "backend/tests/crud/test_user.py:24",
+    "backend/tests/crud/test_user.py:41",
+    "backend/tests/crud/test_user.py:49",
+    "backend/tests/crud/test_user.py:57",
+    "backend/tests/crud/test_user.py:65",
+    "backend/tests/crud/test_user.py:73",
+    "backend/tests/crud/test_user.py:84",
+    "backend/tests/utils/user.py:26",
+    "backend/tests/utils/user.py:42"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "p02",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "get_password_hash"
+   ],
+   "gt": [
+    "backend/app/api/routes/private.py:32",
+    "backend/app/api/routes/users.py:117",
+    "backend/app/crud.py:12",
+    "backend/app/crud.py:25",
+    "backend/tests/api/routes/test_login.py:171"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "p03",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "crud.get_user_by_email"
+   ],
+   "gt": [
+    "backend/app/api/routes/login.py:109",
+    "backend/app/api/routes/login.py:58",
+    "backend/app/api/routes/login.py:85",
+    "backend/app/api/routes/users.py:151",
+    "backend/app/api/routes/users.py:204",
+    "backend/app/api/routes/users.py:61",
+    "backend/app/api/routes/users.py:90",
+    "backend/app/crud.py:46",
+    "backend/tests/api/routes/test_users.py:112",
+    "backend/tests/api/routes/test_users.py:496",
+    "backend/tests/api/routes/test_users.py:55",
+    "backend/tests/api/routes/test_users.py:74",
+    "backend/tests/utils/user.py:39"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "p04",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "verify_password"
+   ],
+   "gt": [
+    "backend/app/api/routes/users.py:110",
+    "backend/app/crud.py:50",
+    "backend/app/crud.py:52",
+    "backend/tests/api/routes/test_login.py:109",
+    "backend/tests/api/routes/test_login.py:159",
+    "backend/tests/api/routes/test_users.py:245",
+    "backend/tests/api/routes/test_users.py:261",
+    "backend/tests/api/routes/test_users.py:338",
+    "backend/tests/crud/test_user.py:125",
+    "backend/tests/crud/test_user.py:92"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "p05",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "security.create_access_token"
+   ],
+   "gt": [
+    "backend/app/api/routes/login.py:39"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "p06",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "generate_password_reset_token"
+   ],
+   "gt": [
+    "backend/app/api/routes/login.py:116",
+    "backend/app/api/routes/login.py:63",
+    "backend/tests/api/routes/test_login.py:95"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "p07",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "crud.create_item"
+   ],
+   "gt": [
+    "backend/tests/utils/item.py:16"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "p08",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callees",
+   "cmd": [
+    "callees",
+    "crud.authenticate"
+   ],
+   "gt": [
+    "backend/app/core/security.py:29",
+    "backend/app/crud.py:34"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "p09",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "outline",
+   "cmd": [
+    "outline",
+    "backend/app/crud.py"
+   ],
+   "gt": [
+    "backend/app/crud.py:10",
+    "backend/app/crud.py:20",
+    "backend/app/crud.py:34",
+    "backend/app/crud.py:42",
+    "backend/app/crud.py:45",
+    "backend/app/crud.py:63"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": [
+    "fn def "
+   ]
+  },
+  {
+   "id": "p10",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Settings._check_default_secret"
+   ],
+   "gt": [
+    "backend/app/core/config.py:81",
+    "backend/app/core/config.py:83",
+    "backend/app/core/config.py:84"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "p11",
+   "repo": "full-stack-fastapi-template",
+   "lang": "py",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Message"
+   ],
+   "gt": [
+    "backend/app/api/routes/items.py:113",
+    "backend/app/api/routes/login.py:72",
+    "backend/app/api/routes/login.py:97",
+    "backend/app/api/routes/users.py:121",
+    "backend/app/api/routes/users.py:143",
+    "backend/app/api/routes/users.py:232",
+    "backend/app/api/routes/utils.py:26"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "t01",
+   "repo": "full-stack-fastapi-template",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "ItemsService.readItems"
+   ],
+   "gt": [
+    "frontend/src/routes/_layout/items.tsx:15"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "t02",
+   "repo": "full-stack-fastapi-template",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "UsersService.readUserMe"
+   ],
+   "gt": [
+    "frontend/src/hooks/useAuth.ts:25",
+    "frontend/src/routes/_layout/admin.tsx:23"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "t03",
+   "repo": "full-stack-fastapi-template",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "UsersService.deleteUser"
+   ],
+   "gt": [
+    "frontend/src/components/Admin/DeleteUser.tsx:34"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "t04",
+   "repo": "full-stack-fastapi-template",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "LoginService.loginAccessToken"
+   ],
+   "gt": [
+    "frontend/src/hooks/useAuth.ts:42"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "t05",
+   "repo": "full-stack-fastapi-template",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "ItemsService.createItem"
+   ],
+   "gt": [
+    "frontend/src/components/Items/AddItem.tsx:56"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "e01",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "createUser"
+   ],
+   "gt": [
+    "src/app/routes/auth/auth.controller.ts:16",
+    "src/prisma/seed.ts:17",
+    "src/tests/services/auth.service.test.ts:102",
+    "src/tests/services/auth.service.test.ts:32",
+    "src/tests/services/auth.service.test.ts:46",
+    "src/tests/services/auth.service.test.ts:60",
+    "src/tests/services/auth.service.test.ts:74"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "e02",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "getTags"
+   ],
+   "gt": [
+    "src/app/routes/tag/tag.controller.ts:15"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "e03",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "favoriteArticle"
+   ],
+   "gt": [
+    "src/app/routes/article/article.controller.ts:215",
+    "src/tests/services/article.service.test.ts:67",
+    "src/tests/services/article.service.test.ts:82"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "e04",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "getProfile"
+   ],
+   "gt": [
+    "src/app/routes/profile/profile.controller.ts:19",
+    "src/tests/services/profile.service.test.ts:28",
+    "src/tests/services/profile.service.test.ts:40"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "e05",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "getCurrentUser"
+   ],
+   "gt": [
+    "src/app/routes/auth/auth.controller.ts:47",
+    "src/tests/services/auth.service.test.ts:222"
+   ],
+   "tol": 0,
+   "must": [
+    "router.get /user"
+   ],
+   "mustnot": []
+  },
+  {
+   "id": "e06",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "login"
+   ],
+   "gt": [
+    "src/app/routes/auth/auth.controller.ts:32",
+    "src/tests/services/auth.service.test.ts:131",
+    "src/tests/services/auth.service.test.ts:143",
+    "src/tests/services/auth.service.test.ts:155",
+    "src/tests/services/auth.service.test.ts:170",
+    "src/tests/services/auth.service.test.ts:198"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "e07",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "followUser"
+   ],
+   "gt": [
+    "src/app/routes/profile/profile.controller.ts:39",
+    "src/tests/services/profile.service.test.ts:79",
+    "src/tests/services/profile.service.test.ts:91"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "e08",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "getTokenFromHeaders"
+   ],
+   "gt": [
+    "src/app/routes/auth/auth.ts:17",
+    "src/app/routes/auth/auth.ts:23"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "e09",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "HttpException"
+   ],
+   "gt": [
+    "src/app/routes/article/article.service.ts:167",
+    "src/app/routes/article/article.service.ts:171",
+    "src/app/routes/article/article.service.ts:175",
+    "src/app/routes/article/article.service.ts:190",
+    "src/app/routes/article/article.service.ts:270",
+    "src/app/routes/article/article.service.ts:307",
+    "src/app/routes/article/article.service.ts:311",
+    "src/app/routes/article/article.service.ts:330",
+    "src/app/routes/article/article.service.ts:401",
+    "src/app/routes/article/article.service.ts:405",
+    "src/app/routes/article/article.service.ts:475",
+    "src/app/routes/article/article.service.ts:546",
+    "src/app/routes/article/article.service.ts:550",
+    "src/app/routes/auth/auth.service.ts:124",
+    "src/app/routes/auth/auth.service.ts:29",
+    "src/app/routes/auth/auth.service.ts:45",
+    "src/app/routes/auth/auth.service.ts:49",
+    "src/app/routes/auth/auth.service.ts:53",
+    "src/app/routes/auth/auth.service.ts:89",
+    "src/app/routes/auth/auth.service.ts:93",
+    "src/app/routes/profile/profile.service.ts:16"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "e10",
+   "repo": "node-express-realworld-example-app",
+   "lang": "ts",
+   "kind": "outline",
+   "cmd": [
+    "outline",
+    "src/app/routes/auth/auth.controller.ts"
+   ],
+   "gt": [
+    "src/app/routes/auth/auth.controller.ts:14",
+    "src/app/routes/auth/auth.controller.ts:30",
+    "src/app/routes/auth/auth.controller.ts:45",
+    "src/app/routes/auth/auth.controller.ts:5",
+    "src/app/routes/auth/auth.controller.ts:61"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": [
+    "user = ",
+    "const user"
+   ]
+  },
+  {
+   "id": "g01",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Mux.routeHTTP"
+   ],
+   "gt": [
+    "mux.go:443",
+    "mux.go:526"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "g02",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Mux.updateRouteHandler"
+   ],
+   "gt": [
+    "mux.go:246",
+    "mux.go:437"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "g03",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Mux.nextRoutePath"
+   ],
+   "gt": [
+    "mux.go:327",
+    "mux.go:397"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "g04",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Mux.handle"
+   ],
+   "gt": [
+    "mux.go:116",
+    "mux.go:132",
+    "mux.go:144",
+    "mux.go:150",
+    "mux.go:156",
+    "mux.go:162",
+    "mux.go:168",
+    "mux.go:174",
+    "mux.go:180",
+    "mux.go:186",
+    "mux.go:192",
+    "mux.go:198",
+    "mux.go:339",
+    "mux.go:340",
+    "mux.go:349"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "g05",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "NewRouteContext"
+   ],
+   "gt": [
+    "middleware/get_head.go:24",
+    "middleware/supress_notfound.go:19",
+    "mux.go:55",
+    "mux_test.go:1265",
+    "mux_test.go:1303",
+    "mux_test.go:1924",
+    "mux_test.go:1944",
+    "mux_test.go:1955",
+    "mux_test.go:2009",
+    "tree_test.go:132",
+    "tree_test.go:248",
+    "tree_test.go:314",
+    "tree_test.go:365",
+    "tree_test.go:392",
+    "tree_test.go:503"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "g06",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Context.Reset"
+   ],
+   "gt": [
+    "context_test.go:125",
+    "mux.go:82",
+    "mux_test.go:1926",
+    "mux_test.go:1931",
+    "mux_test.go:1946",
+    "mux_test.go:1957",
+    "mux_test.go:2011",
+    "mux_test.go:2016",
+    "mux_test.go:2021",
+    "mux_test.go:2026",
+    "mux_test.go:2031",
+    "mux_test.go:2036",
+    "mux_test.go:2041",
+    "tree_test.go:507"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "g07",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "methodNotAllowedHandler"
+   ],
+   "gt": [
+    "mux.go:425"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "g08",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "callers",
+   "cmd": [
+    "callers",
+    "Mux.updateSubRoutes"
+   ],
+   "gt": [
+    "mux.go:214",
+    "mux.go:234"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "g09",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "outline",
+   "cmd": [
+    "outline",
+    "mux.go"
+   ],
+   "gt": [
+    "mux.go:100",
+    "mux.go:109",
+    "mux.go:121",
+    "mux.go:127",
+    "mux.go:137",
+    "mux.go:143",
+    "mux.go:149",
+    "mux.go:155",
+    "mux.go:161",
+    "mux.go:167",
+    "mux.go:173",
+    "mux.go:179",
+    "mux.go:185",
+    "mux.go:191",
+    "mux.go:197",
+    "mux.go:203",
+    "mux.go:21",
+    "mux.go:223",
+    "mux.go:242",
+    "mux.go:268",
+    "mux.go:278",
+    "mux.go:295",
+    "mux.go:358",
+    "mux.go:363",
+    "mux.go:373",
+    "mux.go:382",
+    "mux.go:412",
+    "mux.go:421",
+    "mux.go:430",
+    "mux.go:455",
+    "mux.go:501",
+    "mux.go:511",
+    "mux.go:52",
+    "mux.go:525",
+    "mux.go:532",
+    "mux.go:63"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": []
+  },
+  {
+   "id": "g10",
+   "repo": "chi",
+   "lang": "go",
+   "kind": "callees",
+   "cmd": [
+    "callees",
+    "Mux.Mount"
+   ],
+   "gt": [
+    "context.go:25",
+    "mux.go:203",
+    "mux.go:223",
+    "mux.go:430",
+    "mux.go:501",
+    "tree.go:591"
+   ],
+   "tol": 0,
+   "must": [],
+   "mustnot": [],
+   "note": "re-pinned SK-18: mux.go:302 mx.tree.findPattern(...) calls node.findPattern (tree.go:591) through the *node field"
+  }
+ ]
+}

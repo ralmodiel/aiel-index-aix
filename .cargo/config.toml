@@ -1,0 +1,5 @@
+# Test harness setting: the suites build throwaway repos with no .gitignore, which the first-build .gitignore
+# preflight (aix-core/src/ignorecheck.rs) would otherwise stop. Cargo applies [env] only to the processes it runs
+# (tests, `cargo run`), never to an installed `aix`. Tests of the preflight itself remove it.
+[env]
+AIX_ACCEPT_IGNORE = "1"

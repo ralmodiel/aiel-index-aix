@@ -1,0 +1,12 @@
+[
+ {
+  "id": "owner-find-callers",
+  "q": "In this repo: which code calls OwnerRepository.findById? Answer in 3 short lines with file:line.",
+  "expect": ["OwnerController", "PetController", "VisitController"]
+ },
+ {
+  "id": "visit-add",
+  "q": "Which methods call Pet.addVisit? file:line, 2 lines max.",
+  "expect": ["Owner.java", "VisitController"]
+ }
+]

@@ -1,0 +1,34 @@
+# Built-in seeded regex patterns (name, regex, mined regex it comes from or '-' for a convention pattern).
+# Chosen from scripts/mine-regex.py over a large repo's scripts + transcripts: the top code-search tier
+# (regexes that UI scans run against the source every round) plus the convention patterns with
+# capture fields (routes, JAX-RS paths, roles, HTTP methods, api.ts calls). Named groups become typed columns.
+modal_tag	<(?P<tag>GuardedModal|Modal)\b	<(GuardedModal|Modal)\b
+form_tag	<form\b	<form\b
+clickable_tag	<(?P<tag>button|Link|a)\b	<(button|Link|a)\b
+input_tag	<(?P<tag>input|textarea|select)\b[^>]*>	<(input|textarea|select)\b[^>]*>
+shadowed_dialog_fn	\b(?P<decl>const|function|let|var)\s+(?P<fn>confirm|alert|prompt)\b	\b(const|function|let|var)\s+(confirm|alert|prompt)\b
+native_dialog	window\.(?P<fn>confirm|alert|prompt)\(	window\.(confirm|alert|prompt)\(
+legacy_bg_color	\bbg-(?P<color>blue|indigo|purple|violet)-[56]00\b	\bbg-(blue|indigo|purple|violet)-[56]00\b
+btn_class	\bbtn\b|btn-	\bbtn\b|btn-
+action_color_class	btn-primary|btn-danger|btn-success|bg-primary-[5-9]00|bg-red-[56]00|bg-green-[56]00|text-red	btn-primary|btn-danger|btn-success|bg-primary-[5-9]00|bg-red-[56]00|bg-green-[56]00|text-red
+confirm_call	\bconfirm\(\s*\{	\bconfirm\(\s*\{
+confirm_text	confirmText:\s*['"`](?P<text>[^'"`]*)['"`]	confirmText:\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)
+danger_true	danger:\s*true	danger:\s*true
+destructive_word	\bdelet|permanently	\bdelet|permanently
+dialog_title	title:\s*['"`](?P<text>[^'"`]*)['"`]	title:\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)
+aria_close	aria-label=["']Close["']	aria-label=["']Close["']
+aria_label_or_title	aria-label=|title=	aria-label=|title=
+onclick_handler	onClick=\{(?P<handler>[^}]*\)?)\}	onClick=\{([^}]*\)?)\}
+onclick_save	onClick=\{(?P<prefix>handle|save|submit|on)?(?P<verb>Save|Submit|Update)	onClick=\{(handle|save|submit|on)?(Save|Submit|Update)
+onclick_opens	onClick=\{[^}]*(?:set\w*\((?:true|\{)|open\w*\(|show\w*\()	onClick=\{[^}]*(set\w*\((true|\{)|open\w*\(|show\w*\()
+search_placeholder	placeholder=["'](?P<word>Search|Find|Filter)	placeholder=["'](Search|Find|Filter)
+input_type	type=["'](?P<type>search|file|checkbox|radio|hidden|button)["']	type=["'](search|file|checkbox|radio|hidden|button)["']
+submit_type	type=["']submit["']	type=["']submit["']
+dirty_guard	useDirtyClose|useUnsavedChangesGuard|beforeunload|useBlocker|confirmText:\s*['"]Discard	useDirtyClose|useUnsavedChangesGuard|beforeunload|useBlocker|confirmText:\s*['"]Discard
+modal_a11y	useModalA11y\(	useModalA11y\(
+route_path	<Route path="(?P<path>[^"]+)"	<Route path="([^"]+)"
+jaxrs_path	@Path\("(?P<path>[^"]*)"\)	@Path\("([^"]*)"\)
+roles_allowed	@RolesAllowed\(\{?(?P<roles>[^)]*?)\}?\)	@RolesAllowed\(\{?([^)]*?)\}?\)
+http_method	@(?P<method>GET|POST|PUT|DELETE|PATCH)\b	@(GET|POST|PUT|DELETE|PATCH)\b
+role_const	Roles\.(?P<role>[A-Z_]+)	Roles\.([A-Z_]+)
+api_call	\bapi\.(?P<method>get|post|put|patch|delete)(?:<[^>(]*>)?\(\s*['"`](?P<path>[^'"`$?]*)	-

@@ -466,6 +466,9 @@ enum Cmd {
     Stats {
         #[arg(long)]
         savings: bool,
+        /// with --savings: the % of your weekly allocation used so far this week (e.g. 28%), to show what the week would have cost without aix
+        #[arg(long, requires = "savings", value_name = "PCT")]
+        currentweek: Option<String>,
         /// PreToolUse hook decisions by intent (nudged / answered / silent / aix) from .aix/hook-events.jsonl
         #[arg(long)]
         hooks: bool,
@@ -895,7 +898,7 @@ fn real_main() -> Result<()> {
     }
     let limit = cli.limit;
     let no_refresh = cli.no_refresh;
-    let opts = |kind: Option<String>, answer: bool, savings: bool| Opts { limit, kind, answer, savings, no_refresh, argv: None, x: Default::default() };
+    let opts = |kind: Option<String>, answer: bool, savings: bool| Opts { limit, kind, answer, savings, current_week_pct: None, no_refresh, argv: None, x: Default::default() };
     let (cmd, args, o): (&str, Vec<String>, Opts) = match cli.cmd {
         Cmd::Update { full, embed_deadline, summaries: sums, summaries_deadline, quiet, max_memory, progress } => {
             if let Some(m) = max_memory {
@@ -1046,7 +1049,19 @@ fn real_main() -> Result<()> {
         Cmd::PrivacyCheck { args } => write_cmd("privacy-check", args, opts(None, false, false)),
         Cmd::Sql { args } => ("sql", args, opts(None, false, false)),
         Cmd::Schema => ("schema", vec![], opts(None, false, false)),
-        Cmd::Stats { savings, .. } => ("stats", vec![], opts(None, false, savings)),
+        Cmd::Stats { savings, currentweek, .. } => {
+            let mut o = opts(None, false, savings);
+            if let Some(c) = currentweek {
+                match c.trim().trim_end_matches('%').trim().parse::<f64>() {
+                    Ok(p) if (0.0..=100.0).contains(&p) => o.current_week_pct = Some(p),
+                    _ => {
+                        eprintln!("aix: --currentweek takes a percentage between 0 and 100, e.g. 28%");
+                        std::process::exit(2);
+                    }
+                }
+            }
+            ("stats", vec![], o)
+        }
         // exact argv: a pipe stage or a find pattern keeps its spaces and quotes
         Cmd::Files { args } => exact("files", args, opts(None, false, false)),
         Cmd::Ls { args } => exact("ls", args, opts(None, false, false)),

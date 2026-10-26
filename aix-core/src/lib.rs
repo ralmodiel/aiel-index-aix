@@ -127,6 +127,8 @@ pub struct Opts {
     pub kind: Option<String>,
     pub answer: bool,
     pub savings: bool,
+    /// `stats --savings --currentweek N%`: the share of the weekly allocation used so far this week (0-100)
+    pub current_week_pct: Option<f64>,
     pub no_refresh: bool,
     /// exact argv for commands whose arguments must not be re-split (`grep`); None: split `arg` shell-style
     pub argv: Option<Vec<String>>,
@@ -1365,7 +1367,7 @@ pub fn last_week_start(spec: &str, now: i64, offset: i64) -> Option<i64> {
     Some(start - offset)
 }
 
-fn savings_report(ix: &Index, out: &mut Out) {
+fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
     let week_start = if ix.cfg.week_start.trim().is_empty() {
         None
@@ -1415,25 +1417,30 @@ fn savings_report(ix: &Index, out: &mut Out) {
             let when = local_minute;
             let start_note = if week_start.is_some() { format!(" (week start {})", ix.cfg.week_start.trim()) } else { String::new() };
             let w = ix.cfg.weekly_tokens;
+            let span = format!("{} .. {} ({days:.1} days){start_note}", when(t0), when(t1));
             if w > 0 {
                 let of_week = saved as f64 / w as f64 * 100.0;
-                let of_window = saved as f64 / (w as f64 * days / 7.0) * 100.0;
-                measured = Some(format!(
-                    "  measured {}{start_note} .. {} ({days:.1} days): ~{}K tokens saved = {of_week:.1}% of {} ({}K tokens/week); {of_window:.1}% of its {days:.1}-day share",
-                    when(t0), when(t1), saved / 1000,
-                    if ix.cfg.plan.is_empty() { "the weekly allocation".to_string() } else { format!("the {} weekly allocation", ix.cfg.plan) },
-                    w / 1000
-                ));
+                share = json!({"plan": ix.cfg.plan, "weekly_tokens": w, "pct_of_week": (of_week * 10.0).round() / 10.0});
                 tail.push(format!(
-                    "  note: the allocation was also spent by other projects in this period; this saving counts only this repo's index ({}). Each repo with an index measures its own (run `aix stats --savings` there)",
-                    ix.repo.display()
+                    "  note: a week is assumed to be ~{} tokens{} (an estimate, not your real limit): the points below are approximate; set AIX_WEEKLY_TOKENS=N to use your own",
+                    if w >= 1_000_000 { format!("{}M", w / 1_000_000) } else { format!("{}K", w / 1000) },
+                    if ix.cfg.plan.is_empty() { String::new() } else { format!(" for the {} plan", ix.cfg.plan) }
                 ));
-                share = json!({"plan": ix.cfg.plan, "weekly_tokens": w, "pct_of_week": (of_week * 10.0).round() / 10.0, "pct_of_window": (of_window * 10.0).round() / 10.0});
+                tail.push("  note: this is this repo's index only; run `aix stats --savings --currentweek N%` in each of your other projects and add their points to get the total aix saved you".to_string());
+                measured = Some(match current_week_pct {
+                    Some(p) if p > 0.0 => {
+                        // the week's real usage is `p`% of the limit: the saving is of_week points of it, without aix the week would be p + of_week
+                        let (without, of_usage) = (p + of_week, of_week / p * 100.0);
+                        share["current_week_pct"] = json!(p);
+                        share["pct_without_aix"] = json!((without * 10.0).round() / 10.0);
+                        share["pct_of_usage"] = json!((of_usage * 10.0).round() / 10.0);
+                        format!("  measured {span}: ~{}K tokens saved (this repo only). You have used {p:.0}% of your week; aix saved ~{of_week:.1} points of it ({of_usage:.0}% of your usage): without aix you would be at ~{without:.1}%", saved / 1000)
+                    }
+                    Some(_) => format!("  measured {span}: ~{}K tokens saved (this repo only); --currentweek is 0%, so there is no usage to compare against", saved / 1000),
+                    None => format!("  measured {span}: ~{}K tokens saved (this repo only). Add --currentweek N% (your usage so far this week) to see it against your week", saved / 1000),
+                });
             } else {
-                measured = Some(format!(
-                    "  measured {}{start_note} .. {} ({days:.1} days); to see the saving as a % of your weekly allocation set AIX_WEEKLY_TOKENS=N or `weekly_tokens = N` in config.toml",
-                    when(t0), when(t1)
-                ));
+                measured = Some(format!("  measured {span}: ~{}K tokens saved (this repo only); to see it against your week set AIX_WEEKLY_TOKENS=N (or `weekly_tokens = N` in config.toml) and pass --currentweek N%", saved / 1000));
             }
             if week_start.is_some() {
                 let all = query::rows(&ix.conn, "SELECT count(*), COALESCE(sum(est_bytes)-sum(bytes_out),0), COALESCE(min(ts),0) FROM savings", &[]);
@@ -1445,8 +1452,12 @@ fn savings_report(ix: &Index, out: &mut Out) {
         }
         out.hits.push(json!({"queries": n, "bytes_out": b, "est_bytes": e, "tokens_saved": saved, "from": t0, "to": t1, "week_start": ix.cfg.week_start, "allocation": share}));
     }
-    for x in r {
+    let more = r.len().saturating_sub(5);
+    for x in r.into_iter().take(5) {
         out.emit(format!("  {:9} {:>5} queries  {:>8} B out  ~{:>9} B est  avg {:>4} ms  max {:>5} ms", x[0], x[1], x[2], x[3], x[4], x[5]));
+    }
+    if more > 0 {
+        out.emit(format!("  (+{more} more commands: aix stats --savings --json)"));
     }
     for l in tail.into_iter().chain(measured) {
         out.emit(l);
@@ -1584,7 +1595,7 @@ fn dispatch(ix: &Index, cmd: &str, arg: &str, argv: Option<&[String]>, o: &Opts,
             logq::stats_lines(ix, out);
             ignorecheck::stats_line(&ix.repo, &ix.db_path, ix.meta("built").is_some(), out);
             if o.savings {
-                savings_report(ix, out);
+                savings_report(ix, o.current_week_pct, out);
             }
         }
         other => {

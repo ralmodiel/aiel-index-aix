@@ -411,6 +411,11 @@ impl ServerHandler for Server {
             answer: flag("answer")?,
             // as the CLI: the savings block only when asked (`stats --savings` there, `savings: true` here)
             savings: cmd == "stats" && (flag("savings")? || args.split_whitespace().any(|w| w == "--savings")),
+            current_week_pct: {
+                let w: Vec<&str> = args.split_whitespace().collect();
+                w.iter().position(|x| *x == "--currentweek").and_then(|i| w.get(i + 1))
+                    .and_then(|v| v.trim_end_matches('%').parse::<f64>().ok()).filter(|p| (0.0..=100.0).contains(p))
+            },
             no_refresh: false,
             argv,
             x,

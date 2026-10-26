@@ -94,10 +94,13 @@ aix brief /orders                   # everything about a route before editing it
 aix text "Cancel order"             # where a UI string lives + which tests quote it (numbers, amounts, dates and times in a query copied from the screen match `{...}` / `${...}` in the string)
 aix impact                          # what your uncommitted diff affects
 aix stats --savings                 # what the index holds and what it saved
+aix stats --savings --currentweek 28%   # ...and what that is against the 28% of your week you have used so far
 ```
 
-`stats --savings` also prints the measurement window, and the tokens saved as a share of your weekly model allocation
-when you set it in `~/.config/aix/config.toml` (`plan = "Max 20x"`, `weekly_tokens = 116_000_000`) or with
+`stats --savings` also prints the measurement window. Pass `--currentweek N%` (your real usage so far this week, from your
+plan's usage page) and the last line says how many points of your week the saving was, what that is as a share of
+your usage, and where the week would stand without aix. That needs a week size in tokens; it is an estimate (aix assumes one per plan),
+so set your own when you have measured it. The figure covers the repo you run it in: run it in each project and add the points for the total aix saved you. Set it in `~/.config/aix/config.toml` (`plan = "Max 20x"`, `weekly_tokens = 116_000_000`) or with
 `AIX_WEEKLY_TOKENS` / `AIX_PLAN`. Providers publish no token figure for subscription plans: measure yours as the new
 tokens (input + cache writes + output, not cache reads) your sessions used over a week that ended near 100% of the limit.
 

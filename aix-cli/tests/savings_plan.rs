@@ -58,18 +58,35 @@ fn savings_show_the_window_and_a_share_of_the_configured_allocation() {
     std::fs::write(e.home.join(".config/aix/config.toml"), "plan = \"Team\"\nweekly_tokens = 1_000\n").unwrap();
     std::fs::create_dir_all(e.repo.join(".aix")).unwrap();
     std::fs::write(e.repo.join(".aix/config.toml"), "code_cap = 60\n").unwrap();
-    let cfg = e.savings_line(&[]);
-    assert!(cfg.contains("% of the Team weekly allocation (1K tokens/week)"), "{cfg}");
+    let cfg = e.aix(&["stats", "--savings"], &[]);
+    assert!(cfg.contains("a week is assumed to be ~1K tokens for the Team plan (an estimate, not your real limit)"), "{cfg}");
     // the allocation is shared by every project; the saving is this repo's only
     let full = e.aix(&["stats", "--savings"], &[]);
-    assert!(full.contains("also spent by other projects in this period; this saving counts only this repo's index"), "{full}");
+    assert!(full.contains("tokens saved (this repo only)"), "{full}");
     // the measured line closes the report
     assert!(full.trim_end().lines().last().is_some_and(|l| l.trim_start().starts_with("measured ")), "{full}");
     // env overrides the config
-    let env_l = e.savings_line(&[("AIX_WEEKLY_TOKENS", "2_000"), ("AIX_PLAN", "Pro")]);
-    assert!(env_l.contains("% of the Pro weekly allocation (2K tokens/week)"), "{env_l}");
+    let env_l = e.aix(&["stats", "--savings"], &[("AIX_WEEKLY_TOKENS", "2_000"), ("AIX_PLAN", "Pro")]);
+    assert!(env_l.contains("a week is assumed to be ~2K tokens for the Pro plan"), "{env_l}");
     let j = e.aix(&["stats", "--savings", "--json"], &[]);
     assert!(j.contains("\"pct_of_week\"") && j.contains("\"plan\":\"Team\""), "{j}");
+}
+
+#[test]
+fn currentweek_relates_the_saving_to_this_weeks_usage() {
+    let e = env();
+    for w in ["load_1", "load_2", "load_3"] {
+        e.aix(&["grep", w], &[]);
+    }
+    let w = [("AIX_WEEKLY_TOKENS", "1_000")];
+    let s = e.aix(&["stats", "--savings", "--currentweek", "28%"], &w);
+    assert!(s.contains("You have used 28% of your week") && s.contains("% of your usage): without aix you would be at ~"), "{s}");
+    assert!(s.contains("add their points to get the total aix saved you"), "{s}");
+    assert!(s.trim_end().lines().last().is_some_and(|l| l.trim_start().starts_with("measured ")), "the measured line stays last: {s}");
+    let j = e.aix(&["stats", "--savings", "--currentweek", "28", "--json"], &w);
+    assert!(j.contains("\"pct_of_usage\"") && j.contains("\"pct_without_aix\""), "{j}");
+    let bad = Command::new(env!("CARGO_BIN_EXE_aix")).arg("--repo").arg(&e.repo).args(["stats", "--savings", "--currentweek", "abc"]).env("HOME", &e.home).output().unwrap();
+    assert!(bad.status.code() == Some(2) && String::from_utf8_lossy(&bad.stderr).contains("takes a percentage between 0 and 100"), "{bad:?}");
 }
 
 #[test]

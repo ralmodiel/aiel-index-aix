@@ -1303,12 +1303,13 @@ fn query_flags(arg: &str) -> String {
     f.join(" ")
 }
 
-/// The estimate a report counts, per call: the stored estimate capped by what that kind of command can honestly replace.
-/// A reader (`code`, `cat`...) saves nothing over a Read of the same span, a `grep`/listing replaces one grep (answer
-/// +30%), and an index lookup (callers, endpoint, brief...) replaces a grep plus a read or two (at most 1.65x its answer,
-/// i.e. never more than 39% saved on one call). Applied when reporting, so older rows are capped too.
-const EST_SQL: &str = "max(bytes_out, min(est_bytes, bytes_out * CASE WHEN cmd IN ('code','cat','head','tail','sed') THEN 1.0 \
-WHEN cmd IN ('grep','files','ls','find','count','dedup','logs','paste','sets','wc') THEN 1.3 ELSE 1.65 END))";
+/// The estimate a report counts, per call: `bytes_out * K`, K being the average cost ratio (no-aix baseline / aix answer)
+/// measured per command on ~270 sampled queries of a real repo: a plain `git grep` (250 lines) plus two partial Reads for
+/// lookups, a whole-file Read (40 KB cap) for `outline`/`brief`, `git log --stat` for `history`, the same grep for `grep`.
+/// A reader (`code`, `cat`...) saves nothing over a Read of the same span (K=1); commands not sampled use 3.0. The
+/// baseline assumes the question would have been asked anyway, so the figure is an estimate, not a measurement of a
+/// session. Applied when reporting, so older rows use the same K.
+const EST_SQL: &str = "max(bytes_out, bytes_out * CASE WHEN cmd IN ('code','cat','head','tail','sed') THEN 1.0 WHEN cmd='brief' THEN 14.12 WHEN cmd='bugs' THEN 15.91 WHEN cmd='callers' THEN 78.1 WHEN cmd='endpoint' THEN 36.57 WHEN cmd='grep' THEN 7.49 WHEN cmd='history' THEN 1.83 WHEN cmd='impact' THEN 156.79 WHEN cmd='outline' THEN 6.66 WHEN cmd='qa' THEN 9.68 WHEN cmd='symbol' THEN 61.36 WHEN cmd='tasks' THEN 2.92 WHEN cmd='text' THEN 12.97 WHEN cmd='trace' THEN 10.48 ELSE 3.0 END)";
 
 fn log_savings(ix: &Index, cmd: &str, arg: &str, out: &Out, ms: i64) {
     // best effort: never wait for a writer to note a statistic
@@ -1396,7 +1397,7 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
         &format!("SELECT count(*), COALESCE(sum(bytes_out),0), CAST(COALESCE(sum({EST_SQL}),0) AS INT) FROM savings WHERE ts >= ?1"),
         &[&since],
     );
-    out.emit("== savings (estimate: bytes returned vs grep + partial reads of the files each answer cites; per call capped: readers 0%, grep/listings 23%, index lookups 39%)");
+    out.emit("== savings (estimate: bytes returned vs grep + partial reads of the files each answer cites; per call: bytes returned x the measured average ratio of each command, see README)");
     // the per-command rows come first; the notes and then the measured line close the report (easiest to find)
     let mut tail: Vec<String> = Vec::new();
     let mut measured: Option<String> = None;

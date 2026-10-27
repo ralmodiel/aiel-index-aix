@@ -198,6 +198,7 @@ reads it replaced (up to 4 KB for each of at most 15 cited files, plus 1.5 KB pe
 - Global output options on every command (CLI and MCP `bare`/`head`/`width`): `--bare` prints machine rows only
   (`path:line:text`, `path`, `path:N`, `N<TAB>key`; a cut answer ends with one `…` line naming the next command),
   `--head N` caps the rows and keeps the exact continuation (`--page 2` on listings, `aix code F:A-B` on code),
+  `--locs` prints only `path:line` per hit (implies `--bare`, repeats dropped; MCP `locs`): use it when you only need where, then read the lines around it with `aix code F:A-B` in a second call.
   `--width N` clips the text column (`0` = no clip; `--bare` defaults to 200). Default output is unchanged.
 - `-` reads rows from stdin: aix's own output (decorated, `--jsonl`, `--bare`), GNU grep / rg / git grep
   (`path:line[:col]:text`, `path:N`), `path:A-B`, bare paths, Windows paths, CRLF; 8 MB cap, every line redacted;

@@ -42,7 +42,7 @@ cmd 2>&1 | aix put gate -                   # then: aix grep FAILED '@gate' -C 3
 
 `-x tests,docs`, `--only`, `--conf exact,resolved`, `--skip bugs,hints`; broad: `--count` (grep `--plan`) then
 `--page N`; `--exists`; `--group-by dir:2 --having 'count>5'` ([filters](reference/filters.md)). Instead of `| head`,
-`| cut`: `--head N`, `--width N`, `--bare`, `--max-tokens N` (whole rows, footer names the rest). Exit: 0 found, 1 none, 2 error.
+`| cut`: `--head N`, `--width N`, `--bare`, `--locs` (only `path:line`, then `aix code F:A-B` for the lines), `--max-tokens N` (whole rows, footer names the rest). Exit: 0 found, 1 none, 2 error.
 
 ## Windows
 

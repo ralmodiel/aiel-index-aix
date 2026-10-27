@@ -266,7 +266,10 @@ impl Out {
         }
     }
     pub fn text(&self) -> String {
-        let t = self.text_unbudgeted();
+        let mut t = self.text_unbudgeted();
+        if self.fmt.locs {
+            t = crate::outfmt::locs_only(&t);
+        }
         // --max-tokens N: the whole answer within the budget, cut between lines (outfmt::budget)
         if self.fmt.budget().is_some() {
             return crate::outfmt::budget(&t, &self.fmt);

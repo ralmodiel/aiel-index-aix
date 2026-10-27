@@ -164,6 +164,7 @@ fn tool(read_only: bool) -> Tool {
             "having": s("group filter, e.g. count>2"),
             "exists": b("one line: yes (first hit) or no"),
             "bare": b("machine rows only"),
+            "locs": b("only path:line per hit (implies bare): where, then read the lines in a second call"),
             "head": i("at most N rows"),
             "width": i("clip text to N chars"),
             "max_tokens": i("token budget, whole rows"),
@@ -304,6 +305,9 @@ impl ServerHandler for Server {
         let mut front: Vec<String> = vec![];
         if matches!(a.get("bare"), Some(Value::Bool(true))) {
             front.push("--bare".into());
+        }
+        if matches!(a.get("locs"), Some(Value::Bool(true))) {
+            front.push("--locs".into());
         }
         match a.get("dedup") {
             None | Some(Value::Null) | Some(Value::Bool(false)) => {}

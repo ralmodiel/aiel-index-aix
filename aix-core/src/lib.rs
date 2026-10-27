@@ -223,7 +223,7 @@ pub fn run(ix: &mut Index, cmd: &str, arg: &str, o: &Opts) -> Result<Out> {
                         "--head" | "--width" if i + 1 < rest.len() => {
                             outer.extend(rest.drain(i..i + 2));
                         }
-                        "--bare" => outer.push(rest.remove(i)),
+                        "--bare" | "--locs" => outer.push(rest.remove(i)),
                         _ => i += 1,
                     }
                 }

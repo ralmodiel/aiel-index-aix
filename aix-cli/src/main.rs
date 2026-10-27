@@ -47,6 +47,9 @@ struct Cli {
     /// Machine rows only (path:line:text, path, path:N, N<TAB>key); a cut answer ends with one `…` line
     #[arg(long, global = true)]
     bare: bool,
+    /// Only `path:line` per hit (implies --bare): where, when you read the lines around it in a second call
+    #[arg(long, global = true)]
+    locs: bool,
     /// At most N rows, with one footer naming the exact next command
     #[arg(long, global = true)]
     head: Option<usize>,
@@ -1089,6 +1092,9 @@ fn real_main() -> Result<()> {
     let mut front: Vec<String> = vec![];
     if cli.bare {
         front.push("--bare".into());
+    }
+    if cli.locs {
+        front.push("--locs".into());
     }
     if let Some(n) = cli.head {
         front.extend(["--head".to_string(), n.to_string()]);

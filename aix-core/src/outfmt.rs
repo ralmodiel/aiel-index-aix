@@ -43,13 +43,15 @@ pub struct OutFmt {
     pub cmdline: Option<String>,
     /// `--no-group`: keep `path:line` on every row (no group-by-file layout)
     pub no_group: bool,
+    /// `--locs`: rows reduced to `path:line` (implies --bare); for a caller that only needs where, then reads the lines itself
+    pub locs: bool,
     /// `--gen G`: the index generation a continuation footer was printed at (a later page warns when it changed)
     pub gen: Option<String>,
 }
 
 impl OutFmt {
     pub fn is_default(&self) -> bool {
-        !self.bare && self.head.is_none() && self.width.is_none() && self.dedup.is_none() && !self.no_dedup && !self.no_group && self.budget().is_none()
+        !self.bare && self.head.is_none() && self.width.is_none() && self.dedup.is_none() && !self.no_dedup && !self.no_group && !self.locs && self.budget().is_none()
     }
     /// The output budget in bytes, when one applies.
     pub fn budget(&self) -> Option<usize> {
@@ -71,6 +73,9 @@ impl OutFmt {
         }
         if self.norm {
             s.push_str(" --norm");
+        }
+        if self.locs {
+            s.push_str(" --locs");
         }
         if self.no_group {
             s.push_str(" --no-group");
@@ -134,6 +139,11 @@ pub fn take_tokens(toks: &[String]) -> Result<(Vec<String>, OutFmt), String> {
                 f.bare = true;
                 i += 1;
             }
+            "--locs" => {
+                f.bare = true;
+                f.locs = true;
+                i += 1;
+            }
             "--dedup" => {
                 let k = inline.unwrap_or("line");
                 crate::dedup::Key::parse(k).map_err(|e| format!("--dedup: {e}"))?;
@@ -188,7 +198,7 @@ pub fn take_tokens(toks: &[String]) -> Result<(Vec<String>, OutFmt), String> {
 
 /// The same on an argument string; the string is returned untouched (spacing kept) when nothing was taken.
 pub fn take_str(arg: &str) -> Result<(String, OutFmt), String> {
-    if !arg.contains("--bare") && !arg.contains("--head") && !arg.contains("--width") && !arg.contains("-dedup") && !arg.contains("--max-tokens") && !arg.contains("--no-group") && !arg.contains("--gen") {
+    if !arg.contains("--bare") && !arg.contains("--locs") && !arg.contains("--head") && !arg.contains("--width") && !arg.contains("-dedup") && !arg.contains("--max-tokens") && !arg.contains("--no-group") && !arg.contains("--gen") {
         return Ok((arg.to_string(), OutFmt::default()));
     }
     let toks: Vec<String> = crate::query::shell_split(arg);
@@ -517,5 +527,36 @@ mod tests {
         let b = budget(&big, &OutFmt { max_tokens: Some(60), cmd: Some("grep".into()), cmdline: Some("grep y".into()), ..Default::default() });
         assert!(!b.contains("yyyy") && b.contains("the first row alone is ~"), "{b}");
         assert_eq!(budget("small", &f), "small");
+    }
+}
+
+/// `--locs`: each row reduced to `path:line` (a `path:A-B` range keeps its start), repeats dropped; other lines (the
+/// `\u{2026}` continuation) stay.
+pub fn locs_only(t: &str) -> String {
+    let mut seen = std::collections::HashSet::new();
+    let mut out: Vec<String> = vec![];
+    for l in t.lines() {
+        let loc = l.split_once(':').and_then(|(p, rest)| {
+            let n: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+            (!p.is_empty() && !p.contains(' ') && !n.is_empty()).then(|| format!("{p}:{n}"))
+        });
+        match loc {
+            Some(x) => {
+                if seen.insert(x.clone()) {
+                    out.push(x);
+                }
+            }
+            None => out.push(l.to_string()),
+        }
+    }
+    out.join("\n")
+}
+
+#[cfg(test)]
+mod locs_tests {
+    #[test]
+    fn rows_reduce_to_path_line() {
+        let t = "a/b.rs:12:fn x() {}\na/b.rs:12:again\na/c.ts:3-9:y\n\u{2026} next: aix grep z --page 2";
+        assert_eq!(super::locs_only(t), "a/b.rs:12\na/c.ts:3\n\u{2026} next: aix grep z --page 2");
     }
 }

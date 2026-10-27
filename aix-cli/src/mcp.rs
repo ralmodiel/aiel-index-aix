@@ -164,7 +164,7 @@ fn tool(read_only: bool) -> Tool {
             "having": s("group filter, e.g. count>2"),
             "exists": b("one line: yes (first hit) or no"),
             "bare": b("machine rows only"),
-            "locs": b("only path:line per hit (implies bare): where, then read the lines in a second call"),
+            "locs": b("only path:line per hit (implies bare), when the location is all you need"),
             "head": i("at most N rows"),
             "width": i("clip text to N chars"),
             "max_tokens": i("token budget, whole rows"),

@@ -1303,6 +1303,13 @@ fn query_flags(arg: &str) -> String {
     f.join(" ")
 }
 
+/// The estimate a report counts, per call: the stored estimate capped by what that kind of command can honestly replace.
+/// A reader (`code`, `cat`...) saves nothing over a Read of the same span, a `grep`/listing replaces one grep (answer
+/// +30%), and an index lookup (callers, endpoint, brief...) replaces a grep plus a read or two (at most 1.65x its answer,
+/// i.e. never more than 39% saved on one call). Applied when reporting, so older rows are capped too.
+const EST_SQL: &str = "max(bytes_out, min(est_bytes, bytes_out * CASE WHEN cmd IN ('code','cat','head','tail','sed') THEN 1.0 \
+WHEN cmd IN ('grep','files','ls','find','count','dedup','logs','paste','sets','wc') THEN 1.3 ELSE 1.65 END))";
+
 fn log_savings(ix: &Index, cmd: &str, arg: &str, out: &Out, ms: i64) {
     // best effort: never wait for a writer to note a statistic
     let _ = ix.conn.busy_timeout(Duration::ZERO);
@@ -1381,15 +1388,15 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
     let since = week_start.unwrap_or(0);
     let r = query::rows(
         &ix.conn,
-        "SELECT cmd, count(*), sum(bytes_out), sum(est_bytes), CAST(COALESCE(avg(ms), 0) AS INT), COALESCE(max(ms), 0) FROM savings WHERE ts >= ?1 GROUP BY cmd ORDER BY count(*) DESC",
+        &format!("SELECT cmd, count(*), sum(bytes_out), CAST(sum({EST_SQL}) AS INT), CAST(COALESCE(avg(ms), 0) AS INT), COALESCE(max(ms), 0) FROM savings WHERE ts >= ?1 GROUP BY cmd ORDER BY count(*) DESC"),
         &[&since],
     );
     let tot = query::rows(
         &ix.conn,
-        "SELECT count(*), COALESCE(sum(bytes_out),0), COALESCE(sum(est_bytes),0) FROM savings WHERE ts >= ?1",
+        &format!("SELECT count(*), COALESCE(sum(bytes_out),0), CAST(COALESCE(sum({EST_SQL}),0) AS INT) FROM savings WHERE ts >= ?1"),
         &[&since],
     );
-    out.emit("== savings (estimate: bytes returned vs grep + partial reads of the files each answer cites)");
+    out.emit("== savings (estimate: bytes returned vs grep + partial reads of the files each answer cites; per call capped: readers 0%, grep/listings 23%, index lookups 39%)");
     // the per-command rows come first; the notes and then the measured line close the report (easiest to find)
     let mut tail: Vec<String> = Vec::new();
     let mut measured: Option<String> = None;
@@ -1443,7 +1450,7 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
                 measured = Some(format!("  measured {span}: ~{}K tokens saved (this repo only); to see it against your week set AIX_WEEKLY_TOKENS=N (or `weekly_tokens = N` in config.toml) and pass --currentweek N%", saved / 1000));
             }
             if week_start.is_some() {
-                let all = query::rows(&ix.conn, "SELECT count(*), COALESCE(sum(est_bytes)-sum(bytes_out),0), COALESCE(min(ts),0) FROM savings", &[]);
+                let all = query::rows(&ix.conn, &format!("SELECT count(*), CAST(COALESCE(sum({EST_SQL})-sum(bytes_out),0) AS INT), COALESCE(min(ts),0) FROM savings"), &[]);
                 if let Some(a) = all.first() {
                     let (an, ad, af): (i64, i64, i64) = (a[0].parse().unwrap_or(0), a[1].parse().unwrap_or(0), a[2].parse().unwrap_or(0));
                     tail.push(format!("  all time: {an} queries since {}, ~{}K tokens saved", when(af), ad.max(0) / 4 / 1000));

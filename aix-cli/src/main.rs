@@ -47,7 +47,7 @@ struct Cli {
     /// Machine rows only (path:line:text, path, path:N, N<TAB>key); a cut answer ends with one `…` line
     #[arg(long, global = true)]
     bare: bool,
-    /// Only `path:line` per hit (implies --bare): where, when you read the lines around it in a second call
+    /// Only `path:line` per hit (implies --bare): where, when the location is all you need
     #[arg(long, global = true)]
     locs: bool,
     /// At most N rows, with one footer naming the exact next command

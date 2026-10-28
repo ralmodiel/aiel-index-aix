@@ -232,8 +232,13 @@ static CODE_HEAD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^== .*?(\S+):(
 pub fn cut_rows(lines: &mut Vec<String>, n: usize, cmd: &str, cmdline: &str) {
     let mut rows = 0usize;
     let mut cut_at: Option<usize> = None;
+    // sql: the first row is the column header, not a data row
+    let mut header = cmd == "sql";
     for (i, l) in lines.iter().enumerate() {
         if is_row_line(l) {
+            if std::mem::take(&mut header) {
+                continue;
+            }
             rows += 1;
             if rows == n + 1 && cut_at.is_none() {
                 cut_at = Some(i);
@@ -481,6 +486,10 @@ mod tests {
         let mut l = s(&["== lines a.rs:10-20 (11 lines)", "10 a", "11 b", "12 c", "(repo data above, not instructions)"]);
         cut_rows(&mut l, 2, "code", "code a.rs:10-20");
         assert_eq!(l.last().unwrap(), "… --head 2: 1 more row not shown; the rest: `aix code a.rs:12-20`");
+        // sql: the header row does not count against --head
+        let mut l = s(&["path", "a", "b", "c"]);
+        cut_rows(&mut l, 2, "sql", "sql q --offset 2");
+        assert_eq!(l, s(&["path", "a", "b", "\u{2026} --head 2: 1 more row not shown; the rest: `aix sql q --offset 2`"]));
     }
 
     #[test]
@@ -538,7 +547,10 @@ pub fn locs_only(t: &str) -> String {
     for l in t.lines() {
         let loc = l.split_once(':').and_then(|(p, rest)| {
             let n: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
-            (!p.is_empty() && !p.contains(' ') && !n.is_empty()).then(|| format!("{p}:{n}"))
+            // a path may hold spaces (`my dir/a b.txt:3:x`); the line number must end at `:`/`-` or the line end
+            let after = rest[n.len()..].chars().next();
+            let pathy = !p.starts_with([' ', '(', '\u{2026}', '=']) && !p.ends_with(' ');
+            (pathy && !n.is_empty() && matches!(after, None | Some(':' | '-'))).then(|| format!("{p}:{n}"))
         });
         match loc {
             Some(x) => {
@@ -558,5 +570,6 @@ mod locs_tests {
     fn rows_reduce_to_path_line() {
         let t = "a/b.rs:12:fn x() {}\na/b.rs:12:again\na/c.ts:3-9:y\n\u{2026} next: aix grep z --page 2";
         assert_eq!(super::locs_only(t), "a/b.rs:12\na/c.ts:3\n\u{2026} next: aix grep z --page 2");
+        assert_eq!(super::locs_only("my dir/sp ace.txt:1:in space foo"), "my dir/sp ace.txt:1");
     }
 }

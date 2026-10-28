@@ -549,8 +549,8 @@ pub fn index_gen(ix: &Index) -> String {
 
 /// `sql` text and the aix options typed before or after it (`--bare`, `--head N`, `--width N`, `--offset N`).
 pub fn split_sql_opts(arg: &str) -> (String, Vec<String>) {
-    static LEAD: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| Regex::new(r"^\s*(--bare|--(?:head|width|offset|limit)\s+\d+)(?:\s+|$)").unwrap());
-    static TRAIL: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| Regex::new(r"(?:^|\s+)(--bare|--(?:head|width|offset|limit)\s+\d+)\s*$").unwrap());
+    static LEAD: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| Regex::new(r"^\s*(--bare|--locs|--(?:head|width|offset|limit|max-tokens)\s+\d+)(?:\s+|$)").unwrap());
+    static TRAIL: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| Regex::new(r"(?:^|\s+)(--bare|--locs|--(?:head|width|offset|limit|max-tokens)\s+\d+)\s*$").unwrap());
     let mut q = arg.to_string();
     let mut opts: Vec<String> = vec![];
     while let Some(c) = LEAD.captures(&q) {

@@ -118,7 +118,7 @@ pub fn set_exact_argv(on: bool) -> bool {
 }
 
 /// `.`, `./`, `..` back to the root, the repo's absolute path: the whole repo.
-fn is_root_word(ix: &Index, w: &str) -> bool {
+pub(crate) fn is_root_word(ix: &Index, w: &str) -> bool {
     let c = crate::opts::clean_path(w);
     if (c.is_empty() || c == ".") && w.starts_with('.') && !w.starts_with("..") {
         return true;
@@ -433,7 +433,9 @@ fn pat_src(p: &str, g: &Gx, notes: &mut Vec<(String, String)>) -> String {
         return regex::escape(p);
     }
     if !g.ere {
-        if let Some(t) = crate::query::bre_to_ere(p) {
+        // a GNU-style call (short flags) reads a lone `\(x\)` group as GNU does too
+        let gnu_group = || (g.gnu && p.contains("\\(") && p.matches("\\(").count() == p.matches("\\)").count()).then(|| crate::query::bre_unescape(p));
+        if let Some(t) = crate::query::bre_to_ere(p).or_else(gnu_group) {
             notes.push((p.to_string(), t.clone()));
             return t;
         }
@@ -795,7 +797,8 @@ pub fn grep(ix: &Index, args: &[String], budget_ms: u128, out: &mut Out) -> bool
             keep.then_some(fr)
         })
         .collect();
-    if g.bare || g.count_by.is_some() {
+    // --bare keeps the plain order (source first), so `--bare --head N` is the same rows as plain/json
+    if g.count_by.is_some() {
         res.sort_by(|a, b| a.file.cmp(&b.file));
     } else {
         res.sort_by(|a, b| path_rank(&a.file).cmp(&path_rank(&b.file)).then_with(|| a.file.cmp(&b.file)));

@@ -399,7 +399,10 @@ enum Cmd {
     /// Named materialized regex patterns: patterns [list | check <regex> | add <name> <regex> | rm|pin|unpin <name>]
     Patterns { args: Vec<String> },
     /// Which command answers a task: howto <what you want to do>
-    Howto { args: Vec<String> },
+    Howto {
+        #[arg(allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
     /// Regex search over indexed files: grep <regex> [-i] [-w] [-F] [-x] [-e <regex>]... [-l] [-c] [-A|-B|-C <n>] [-g <glob>]... [-t <lang>] [--in <path part>] [--scripts] [--and RE] [--not RE] [--body|--member] [<path>|@set]
     Grep {
         /// The regex (quote it) and grep/rg-style flags: -i -w -F -x -e -l -c -A/-B/-C N -g/--glob GLOB (repeatable, !negates)

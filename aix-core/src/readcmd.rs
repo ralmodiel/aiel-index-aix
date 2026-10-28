@@ -2458,7 +2458,8 @@ mod rows {
                     }
                     (path.clone(), None, None, None)
                 }
-                R::Count { .. } => match row.path() {
+                // `path:N` is also GNU `grep -c` (a count); a key with spaces (`my dir/a b.txt:3`) is a path when indexed
+                R::Count { key, .. } => match row.path().or_else(|| rel_path(ix, key).map(|_| key.as_str())) {
                     Some(p) => (p.to_string(), None, None, None),
                     None => {
                         r.ignored += 1;

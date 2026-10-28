@@ -177,7 +177,7 @@ impl Config {
                 }
             }
         }
-        if let Some(w) = env_var("WEEKLY_TOKENS").and_then(|v| v.trim().replace('_', "").parse::<u64>().ok()) {
+        if let Some(w) = env_var("WEEKLY_TOKENS").and_then(|v| parse_weekly_tokens(&v)) {
             cfg.weekly_tokens = w;
         }
         if let Some(u) = env_var("EMBED_URL") {
@@ -293,4 +293,9 @@ mod tests {
         assert_eq!(c.embed.unwrap().url, "http://e");
         assert_eq!(c.embed_batch, 32);
     }
+}
+
+/// `AIX_WEEKLY_TOKENS`: a whole number of at least 1000 (smaller values make the savings meter absurd); None otherwise.
+pub fn parse_weekly_tokens(v: &str) -> Option<u64> {
+    v.trim().replace('_', "").parse::<u64>().ok().filter(|w| *w >= 1_000)
 }

@@ -628,7 +628,12 @@ fn open_logs(ix: &Index) -> anyhow::Result<(Store, PathBuf, Cfg)> {
 }
 
 fn resolve_names(cfg: &Cfg, q: &Q, out: &mut Out) -> Option<Vec<String>> {
-    match &q.name {
+    resolve_names_pos(cfg, q, None, out)
+}
+
+/// like resolve_names, but a stray positional (`logs errors app`) is taken as the log name and validated, never ignored
+fn resolve_names_pos(cfg: &Cfg, q: &Q, pos: Option<&String>, out: &mut Out) -> Option<Vec<String>> {
+    match q.name.as_ref().or(pos) {
         Some(n) => match cfg.find(n) {
             Some(s) => Some(vec![s.name.clone()]),
             None => {
@@ -1218,7 +1223,7 @@ fn lag_of(store: &Store, spec: &Spec, repo: &Path) -> (i64, i64) {
 
 fn cmd_errors(ix: &mut Index, q: &Q, out: &mut Out) -> anyhow::Result<()> {
     let (store, dir, cfg) = open_logs(ix)?;
-    let Some(names) = resolve_names(&cfg, q, out) else { return Ok(()) };
+    let Some(names) = resolve_names_pos(&cfg, q, q.pos.first(), out) else { return Ok(()) };
     refresh_logs(&store, &dir, ix, &cfg, out);
     touch(&store.conn, &names);
     let mut q2 = Q { since: q.since.or(Some(now() - 3600)), min_level: q.min_level.or(Some(logparse::ERROR)), ..clone_q(q) };
@@ -1304,7 +1309,7 @@ fn cmd_grep(ix: &mut Index, q: &Q, out: &mut Out) -> anyhow::Result<()> {
     let Some(p) = q.pos.first() else { anyhow::bail!("usage: aix logs grep '<regex>' [--since 1h] [-i] [--level L] [--name N] [--n 20]") };
     let pat = re(p, q.icase).map_err(|e| anyhow::anyhow!(e))?;
     let (store, dir, cfg) = open_logs(ix)?;
-    let Some(names) = resolve_names(&cfg, q, out) else { return Ok(()) };
+    let Some(names) = resolve_names_pos(&cfg, q, q.pos.get(1), out) else { return Ok(()) };
     refresh_logs(&store, &dir, ix, &cfg, out);
     touch(&store.conn, &names);
     run_grep(&store.conn, &names, q, &pat, Some(ix), out);

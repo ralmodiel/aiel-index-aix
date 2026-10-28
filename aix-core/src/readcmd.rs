@@ -248,6 +248,9 @@ fn open_src(ix: &Index, typed: &str) -> Result<Src, (String, i32)> {
         }
         return Ok(make_src(rel, typed.to_string(), &query::decode_text(&b), false));
     }
+    if typed.contains("***") || typed.contains("\u{201c}quoted:") {
+        return Err((format!("path not found: {typed} (that is a masked name: aix shows a file name holding a secret-shaped or instruction-like string masked, and the masked form cannot be read back; ls/find give the real name)"), 1));
+    }
     let near = query::file_near(ix, &c, 3);
     Err((format!("path not found: {typed} (no indexed file and no file of that name under the repo){}", if near.is_empty() { String::new() } else { format!("; did you mean: {}", near.join(", ")) }), 1))
 }
@@ -2335,7 +2338,7 @@ fn diff(ix: &Index, t: &[String], out: &mut Out) {
     };
     if mode == Mode::Deco {
         let nf = if listing { 0 } else { blocks.len() };
-        out.emit(format!("== diff {desc}{}", if listing { String::new() } else { format!(": {nf} file{} changed", if nf == 1 { "" } else { "s" }) }));
+        out.emit(format!("== diff {desc}{}", if listing { String::new() } else { format!(": {} file{} changed{}", nf + dropped, if nf + dropped == 1 { "" } else { "s" }, if dropped > 0 { format!(" ({dropped} hidden)") } else { String::new() }) }));
     }
     let base_args: Vec<String> = t.iter().take_while(|x| x.as_str() != "--").filter(|x| !matches!(x.as_str(), "--full" | "--raw" | "--bare" | "-")).cloned().collect();
     let mut masked = 0;
@@ -2376,7 +2379,7 @@ fn diff(ix: &Index, t: &[String], out: &mut Out) {
         for n in notes {
             out.emit(n);
         }
-        if !changed {
+        if !changed && dropped == 0 {
             out.emit(format!("no differences{}", if no_index || paths.is_empty() { "" } else { " for these paths (an untracked file has nothing in HEAD to compare: aix diff A B compares two files)" }));
         }
         if out.lines.len() > 1 {
@@ -2384,7 +2387,7 @@ fn diff(ix: &Index, t: &[String], out: &mut Out) {
         }
     }
     // 0 = differences shown, 1 = none (GNU diff says 1 for "different"; aix keeps 0 found / 1 none)
-    out.exit_code = Some(if masked > 0 { 2 } else if changed { 0 } else { 1 });
+    out.exit_code = Some(if masked > 0 { 2 } else if changed || dropped > 0 { 0 } else { 1 });
     out.error = masked > 0;
 }
 

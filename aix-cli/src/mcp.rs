@@ -418,7 +418,7 @@ impl ServerHandler for Server {
             current_week_pct: {
                 let w: Vec<&str> = args.split_whitespace().collect();
                 w.iter().position(|x| *x == "--currentweek").and_then(|i| w.get(i + 1))
-                    .and_then(|v| v.trim_end_matches('%').parse::<f64>().ok()).filter(|p| (0.0..=100.0).contains(p))
+                    .and_then(|v| v.strip_suffix('%').unwrap_or(v).parse::<f64>().ok()).filter(|p| (0.0..=100.0).contains(p))
             },
             no_refresh: false,
             argv,

@@ -710,7 +710,8 @@ pub fn api_chain(ix: &Index, files: &[String]) -> Vec<Chain> {
             if !seen.insert(key) {
                 continue;
             }
-            let api = if r[2].is_empty() { "api".to_string() } else { format!("api.{}", r[2]) };
+            // a raw call: label it by its HTTP verb, not the enclosing function (which is not a client wrapper)
+            let api = if r[3].is_empty() { "api".to_string() } else { format!("api.{}", r[3].to_lowercase()) };
             { let mut ch = chain_row(ix, format!("{}:{}", base(f), r[0]), api, &r[3], &r[4], &r[5]); ch.file = f.clone(); ch.line = r[0].parse().unwrap_or(0); out.push(ch); }
         }
     }
@@ -2385,6 +2386,18 @@ pub fn endpoint(ix: &Index, arg: &str, out: &mut Out) {
             if let Some(rest) = p.strip_prefix("/api/") {
                 f = lookup(&format!("/{rest}"));
             }
+        }
+        if f.is_empty() {
+            // a concrete URL (`/api/years/01ABC`): match templates segment by segment, `{}` takes any one segment
+            let segs = |s: &str| s.trim_matches('/').split('/').map(String::from).collect::<Vec<_>>();
+            let want = segs(&norm_path(&p));
+            let fits = |norm: &str| {
+                let n = segs(norm);
+                let n = if n.len() == want.len() + 1 && n[0] == "api" && want.first().is_some_and(|w| w != "api") { &n[1..] } else { &n[..] };
+                n.len() == want.len() && n.iter().zip(&want).all(|(t, w)| t == "{}" || t == w)
+            };
+            f = rows(c, "SELECT method, path, norm, file, line, handler, roles, class FROM endpoints WHERE norm LIKE '%{}%' ORDER BY length(path)", &[]);
+            f.retain(|e| fits(&e[2]) && method.as_ref().is_none_or(|m| &e[0] == m));
         }
         f
     } else {

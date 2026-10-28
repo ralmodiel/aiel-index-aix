@@ -129,3 +129,15 @@ fn name_only_fallback() {
     assert_eq!(refs(&r, "Svc.Run", "helper")[0].recv_type, "Svc");
     assert!(refs(&r, "Svc.Run", "Log").iter().all(|x| x.recv_type.is_empty()));
 }
+
+#[test]
+fn java_varargs_sig_comment_args_and_rust_macro_paths() {
+    let src = "class A {\n  void va(boolean f, String... also) {}\n  void c(A p) {\n    p.va(true, // why\n      \"x\");\n  }\n}\n";
+    let r = CodeGraph.extract(&fixture(), &[SourceFile::new("j/A.java", src)]);
+    assert!(member(&r, "A.va")[0].sig.contains("String... also"), "{}", member(&r, "A.va")[0].sig);
+    assert_eq!(refs(&r, "A.c", "va")[0].argc, 2, "a comment is not an argument");
+    let rs = "mod util { pub fn h(x: i32) -> i32 { x } }\nfn user() { println!(\"{}\", util::h(2)); }\n";
+    let r = CodeGraph.extract(&fixture(), &[SourceFile::new("r/lib.rs", rs)]);
+    let h: Vec<_> = r.refs.iter().filter(|x| x.callee == "h").collect();
+    assert!(!h.is_empty() && h.iter().all(|x| x.recv.is_empty()), "{h:?}");
+}

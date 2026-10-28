@@ -499,7 +499,8 @@ fn param_list(p: Node, src: &str) -> String {
                 .or_else(|| named_children(c).into_iter().find(|x| x.kind() == "variable_declarator"))
                 .map(|x| text(x, src).to_string())
                 .unwrap_or_default();
-            format!("{t} {nm}")
+            let dots = if c.kind() == "spread_parameter" { "..." } else { "" };
+            format!("{t}{dots} {nm}")
         })
         .collect();
     format!("({})", parts.join(", "))
@@ -880,7 +881,7 @@ impl JRefs<'_, '_> {
                         }
                     }
                     self.push(rows, c, &name, recv, rt, "call", known);
-                    let n = c.child_by_field_name("arguments").map(|a| named_children(a).len() as i32).unwrap_or(-1);
+                    let n = c.child_by_field_name("arguments").map(|a| crate::lang::engine::arg_nodes(Some(a)).len() as i32).unwrap_or(-1);
                     if let Some(r) = rows.refs.last_mut() {
                         r.argc = n;
                         if mock {
@@ -1387,7 +1388,7 @@ impl Ts<'_> {
                 let id = text(func, src);
                 let (rt, callee) = self.binding_bare(id);
                 self.ref_(rows, n, cx, &callee, String::new(), rt.clone(), "call", !rt.is_empty());
-                let argc = n.child_by_field_name("arguments").map(|a| named_children(a).len() as i32).unwrap_or(-1);
+                let argc = n.child_by_field_name("arguments").map(|a| crate::lang::engine::arg_nodes(Some(a)).len() as i32).unwrap_or(-1);
                 if let Some(r) = rows.refs.last_mut() {
                     r.argc = argc;
                 }
@@ -1405,7 +1406,7 @@ impl Ts<'_> {
                 if matches!(pname.as_str(), "bind" | "call" | "apply") {
                     self.value_ref(rows, obj, cx);
                 }
-                let argc = n.child_by_field_name("arguments").map(|a| named_children(a).len() as i32).unwrap_or(-1);
+                let argc = n.child_by_field_name("arguments").map(|a| crate::lang::engine::arg_nodes(Some(a)).len() as i32).unwrap_or(-1);
                 if let Some(r) = rows.refs.last_mut() {
                     r.argc = argc;
                 }
@@ -2423,7 +2424,7 @@ impl Py<'_> {
     fn call_ref(&mut self, n: Node, cx: &PCx, rows: &mut Rows) {
         let src = self.src;
         let Some(func) = n.child_by_field_name("function") else { return };
-        let argc = n.child_by_field_name("arguments").map(|a| named_children(a).len() as i32).unwrap_or(-1);
+        let argc = n.child_by_field_name("arguments").map(|a| crate::lang::engine::arg_nodes(Some(a)).len() as i32).unwrap_or(-1);
         let first = rows.refs.len();
         let mk = |recv: String, rt: String, callee: &str, exact: bool| Ref {
             file: self.f.path.clone(),

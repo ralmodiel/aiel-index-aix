@@ -436,3 +436,11 @@ impl Drop for Mcp {
         let _ = self.c.wait();
     }
 }
+
+#[test]
+fn endpoint_accepts_a_concrete_url() {
+    let java = "import jakarta.ws.rs.*;\n@Path(\"/api/years\")\npublic class YearResource {\n  @GET @Path(\"/{id}\") public String get(@PathParam(\"id\") String id) { return id; }\n}\n";
+    let (_d, r) = repo(&[("src/YearResource.java", java)]);
+    let o = ok(&r, &["endpoint", "GET /api/years/01ABC"]);
+    assert!(o.contains("GET /api/years/{id}"), "{o}");
+}

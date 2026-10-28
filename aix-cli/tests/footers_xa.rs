@@ -100,3 +100,19 @@ fn output_flags_are_never_spliced_into_data_rows() {
     let o = f.text(&["grep", "next `aix", "src", "--head", "5", "--width", "300"]);
     assert!(o.contains("next `aix {} --page {}`") && !o.contains("{} --head 5"), "{o}");
 }
+
+#[test]
+fn output_contract_fixes() {
+    let f = Fx::new();
+    // global flags before sql are output options, not SQL text
+    let o = f.text(&["--max-tokens", "60", "sql", "select 1 as x"]);
+    assert!(o.contains('1') && !o.contains("read-only"), "{o}");
+    // `.` is the whole repo: a miss is 0 matches, not "path not found"
+    let o = f.text(&["grep", "zzznomatch", "."]);
+    assert!(!o.contains("path not found"), "{o}");
+    // an in-call grep stage tests the row as printed (path:line:text)
+    let o = f.text(&["grep get_token | grep -c r1.py"]);
+    assert_eq!(o.trim(), "2", "{o}");
+    // shell flags after howto are words, not CLI flags
+    assert!(f.aix(&["howto", "ls", "-la"], None).status.success());
+}

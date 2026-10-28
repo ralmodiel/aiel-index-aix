@@ -4859,7 +4859,8 @@ pub fn bre_to_ere(p: &str) -> Option<String> {
                 }
                 '(' => open += 1,
                 ')' => close += 1,
-                '+' | '?' => quant = true,
+                // `fo\+`, `[0-9]\?`, `.\+`: a quantifier after an atom (a leading `\?id=` stays literal)
+                '+' | '?' => quant |= i > 0 && (c[i - 1].is_alphanumeric() || matches!(c[i - 1], ']' | ')' | '.' | '_')),
                 _ => {}
             }
             i += 2;
@@ -4867,10 +4868,15 @@ pub fn bre_to_ere(p: &str) -> Option<String> {
             i += 1;
         }
     }
-    let group = open > 0 && open == close;
-    if !(alt || interval || (group && quant)) {
+    if !(alt || interval || quant) || (open != close && !alt && !interval) {
         return None;
     }
+    Some(bre_unescape(p))
+}
+
+/// GNU BRE operators `\| \( \) \+ \? \{ \}` as ERE; other escapes kept.
+pub fn bre_unescape(p: &str) -> String {
+    let c: Vec<char> = p.chars().collect();
     let mut out = String::new();
     let mut i = 0;
     while i < c.len() {
@@ -4888,7 +4894,7 @@ pub fn bre_to_ere(p: &str) -> Option<String> {
             i += 1;
         }
     }
-    Some(out)
+    out
 }
 
 /// Ranking group of a path for grep output: 0 source, 1 tests and scripts, 2 docs and task lists, 3 data.
@@ -5200,7 +5206,7 @@ pub fn grep(ix: &Index, arg: &str, argv: Option<&[String]>, out: &mut Out) {
     while let Some(last) = rest.last() {
         // `./x`, `x\\y`, `x//y`, `x/`, a path below the working subdirectory all name the indexed path
         let resolved = crate::opts::resolve_path(ix, last);
-        let whole_repo = crate::opts::clean_path(last).is_empty() && last.starts_with('.');
+        let whole_repo = crate::grepx::is_root_word(ix, last);
         if resolved.is_none() && !whole_repo {
             break;
         }
@@ -6114,6 +6120,9 @@ mod hardening_tests {
         assert_eq!(bre_to_ere(r"\?id="), None);
         assert_eq!(bre_to_ere(r"\{\}"), None);
         assert_eq!(bre_to_ere("a|b"), None);
+        // a quantifier after an atom is GNU BRE on its own
+        assert_eq!(bre_to_ere(r"fo\+").as_deref(), Some("fo+"));
+        assert_eq!(bre_to_ere(r"[[:digit:]]\+").as_deref(), Some("[[:digit:]]+"));
     }
 
     #[test]

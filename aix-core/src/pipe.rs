@@ -753,7 +753,15 @@ fn grep_filter(s: &mut Stream, args: &[String], ix: Option<&Index>) -> Result<()
     }
     rest.retain(|a| a != "-" && !a.is_empty());
     let Some(re) = grep_pattern(&rest) else { return Err("grep (stream): needs a valid regex".into()) };
-    s.rows.retain(|r, m| re.is_match(&row_text(r, m)) != inv);
+    // the row as printed (`path:line:text`), as a shell grep on --bare rows sees it
+    s.rows.retain(|r, m| {
+        let full = match r {
+            Row::Hit { path, line, text } => format!("{path}:{line}:{text}"),
+            Row::Range { path, a, b } => format!("{path}:{a}-{b} {}", m.text),
+            _ => row_text(r, m).into_owned(),
+        };
+        re.is_match(&full) != inv
+    });
     if only && !inv {
         // GNU -o: each match on its own line
         let ms: Vec<String> = s.rows.iter().flat_map(|(r, m)| re.find_iter(&row_text(r, m)).map(|x| x.as_str().to_string()).filter(|x| !x.is_empty()).collect::<Vec<_>>()).collect();

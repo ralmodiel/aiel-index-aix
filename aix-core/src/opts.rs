@@ -433,6 +433,13 @@ pub fn hint_rows(lines: &[String]) -> Vec<crate::plan::Row> {
 type Curated = (&'static [&'static [&'static str]], &'static str);
 
 const HOWTO: &[Curated] = &[
+    // shell habits (`howto 'find . -name x'`, `howto wc -l`): the aix command that does the same over the index
+    (&[&[" -name", " -iname", "find . "]], "aix files -name '<glob>' [DIR]   (find(1) primaries over the indexed files)  /  aix find <name>"),
+    (&[&[" wc ", " du ", " tree", " ls ", " ls -"]], "aix files [DIR|GLOB] --lines [--size]   (wc -l, du, tree)  /  aix ls [DIR]   (one level, like ls)"),
+    (&[&["with context", "context lines", " grep -c", " grep -a", " grep -b", " rg ", " ripgrep", " ag "]], "aix grep '<regex>' [-C N] [path]   (GNU grep flags; -A/-B/-C context)"),
+    (&[&[" cat ", " less ", " more ", " head ", " tail "]], "aix cat <file>   /   aix head -n N <file>   /   aix tail -n N <file>"),
+    (&[&[" awk ", " cut ", " sort ", " uniq ", " xargs "]], "aix '<command> | cut -d: -f1 | sort | uniq -c'   (row stages; aix pipe --help)"),
+    (&[&["log file", " a log", " logs", "tail -f"]], "aix logs errors [--since 15m]   /   aix logs grep '<re>'   (registered log files; aix logs add <path>)"),
     (&[&["script"]], "aix script <words>   (existing scripts for a task, with usage)"),
     (&[&["history", "git log", "commits touching", "commits that touch", "commits touch", "touched", "touching", "commits for", "commits of", "commits to", "who changed", "last changed", "blame", "log of", "changed over time", "commits changed", "which commits", "commits changing", "changes to"]], "aix history <file|Class.method>   (commits touching it, fixes flagged, findings naming it)"),
     (&[&["who calls", "callers", "what calls", "used by", "who uses", "who references", "is called", "usages of", "uses of"]], "aix callers <Symbol|Class.method>   (add --conf exact,resolved to drop name-only rows)"),
@@ -471,7 +478,8 @@ fn range_marked(q: &str) -> String {
 
 /// The curated commands that answer a task described in words, best match first (all groups must hit).
 pub fn howto_curated(question: &str) -> Vec<&'static str> {
-    let q = range_marked(&question.to_lowercase());
+    // padded: a shell word (` ls `, ` du `) matches as a whole word
+    let q = format!(" {} ", range_marked(&question.to_lowercase()));
     let mut hit: Vec<(usize, usize, &'static str)> = HOWTO
         .iter()
         .enumerate()

@@ -2205,8 +2205,10 @@ pub fn text(ix: &Index, s: &str, out: &mut Out) {
             out.hit("menu", &m[0], m[1].parse().unwrap_or(0), &m[3]);
         }
         for (i, m) in menu_defs.iter().enumerate() {
-            if !found.iter().any(|r| r[0] == m[0] && r[1] == m[1] && r[3].eq_ignore_ascii_case(&m[3])) {
-                found.insert(i, vec![m[0].clone(), m[1].clone(), "menu".into(), m[3].clone()]);
+            // the label's own string row (a `name: 'Two words'` literal) is that menu entry: say so
+            match found.iter_mut().find(|r| r[0] == m[0] && r[1] == m[1] && r[3].eq_ignore_ascii_case(&m[3])) {
+                Some(r) => r[2] = "menu".into(),
+                None => found.insert(i, vec![m[0].clone(), m[1].clone(), "menu".into(), m[3].clone()]),
             }
         }
     }

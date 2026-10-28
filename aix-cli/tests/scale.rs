@@ -174,7 +174,8 @@ fn grep_regex_limits_and_bre_errors() {
     assert!(!out.contains("bad regex") && out.contains("w.py"), "{out}");
     let (_, out) = aix(&fx, &["grep", r"(?i)\b\w{40,}\b"], None);
     assert!(!out.contains("bad regex") && out.contains("w.py"), "{out}");
-    let (rc, out) = aix(&fx, &["grep", r"f\(x\)\{r \+"], None);
+    // `\+` is a BRE quantifier only after an atom (fix-Q): `x\+`, not ` \+`
+    let (rc, out) = aix(&fx, &["grep", r"f\(x\)\{r x\+"], None);
     assert!(rc == 2 && out.contains("read as GNU BRE") && out.contains("-E"), "{rc} {out}");
 }
 

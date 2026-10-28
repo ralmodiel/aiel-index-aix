@@ -445,7 +445,8 @@ fn query_commands_as_sources_and_consumers() {
     assert!(o.contains("fees.saveFee(req.body)") && !o.contains("server/fees.js:4-7"), "{o}");
     // a UI string -> the brief of the file that holds it
     let o = aix(&r, &["text \"Save grades\" | brief -"]);
-    assert!(o.contains("file web/src/Grades.tsx") && o.contains("api POST /api/fees"), "{o}");
+    // a raw fetch call is labelled by its verb (`api.post POST /api/fees`) since the answer-accuracy fix
+    assert!(o.contains("file web/src/Grades.tsx") && o.contains("api.post POST /api/fees"), "{o}");
     // impact rows keep their section as the kind
     let o = aix(&r, &["impact saveFee --conf name | count by kind", "--bare"]);
     assert_eq!(o.trim(), "1\tendpoint", "{o}");

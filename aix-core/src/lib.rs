@@ -1052,7 +1052,9 @@ fn run_inner(ix: &mut Index, cmd: &str, arg: &str, o: &Opts) -> Result<Out> {
             if ex.hide.matches(f) {
                 return false;
             }
-            shown.contains(&(f.to_string(), l)) || (l == 0 && shown_files.contains(f))
+            // a compact row names a repeated file by base name (endpoint): `routes.js:7` still shows the hit
+            let base = f.rsplit('/').next().unwrap_or(f);
+            shown.contains(&(f.to_string(), l)) || (l > 0 && shown.contains(&(base.to_string(), l))) || (l == 0 && shown_files.contains(f))
         };
         out.hits = r.hits.iter().filter(|h| hit_in_page(h)).cloned().collect();
         out.lines.append(&mut pg);

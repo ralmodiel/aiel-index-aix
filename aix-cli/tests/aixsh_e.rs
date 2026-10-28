@@ -471,8 +471,11 @@ fn lifecycle_append_replace_keep_rm_prune_ttl() {
     ax(&e, &["put", "short", "--ttl", "1s", "-"], Some(b"x\n"));
     ax(&e, &["put", "forever", "--ttl", "never", "-"], Some(b"y\n"));
     std::thread::sleep(std::time::Duration::from_millis(2200));
+    // an expired set is pruned whenever the store opens (fix-R), so an explicit prune finds nothing left
+    let l = ok(&e, &["sets"]);
+    assert!(!l.contains("@short"), "{l}");
     let p = ok(&e, &["sets", "prune"]);
-    assert!(p.contains("pruned @short") && !p.contains("forever"), "{p}");
+    assert!(p.contains("nothing to prune"), "{p}");
     assert!(ok(&e, &["sets"]).contains("@forever") && ok(&e, &["sets"]).contains("never"));
     // global store
     let (c, _, _) = ax(&e, &["put", "gl", "--global", "-"], Some(b"global row\n"));

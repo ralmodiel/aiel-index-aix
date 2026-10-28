@@ -1487,7 +1487,8 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
                         share["pct_without_aix"] = json!((without * 10.0).round() / 10.0);
                         share["pct_of_usage"] = json!((of_usage * 10.0).round() / 10.0);
                         share["pct_of_week_if_half_asked"] = json!((of_week / 2.0 * 10.0).round() / 10.0);
-                        format!("  measured {span} (estimate): ~{}K tokens saved (this repo only). You have used {p:.0}% of your week; aix saved ~{of_week:.1} points of it ({of_usage:.0}% of your usage; ~{:.1} if only half of these lookups would have been asked without aix): without aix you would be at ~{without:.1}%", saved / 1000, of_week / 2.0)
+                        let (lo, lo_usage) = (of_week / 2.0, of_usage / 2.0);
+                        format!("  measured {span} (estimate): ~{}K tokens saved (this repo only). You have used {p:.0}% of your week. aix saved {lo:.1}%-{of_week:.1}% ({lo_usage:.0}%-{of_usage:.0}% of your usage). Without aix your usage would have been {:.1}%-{without:.1}%", saved / 1000, p + lo)
                     }
                     Some(_) => format!("  measured {span} (estimate): ~{}K tokens saved (this repo only); --currentweek is 0%, so there is no usage to compare against", saved / 1000),
                     None => format!("  measured {span} (estimate): ~{}K tokens saved (this repo only). Add --currentweek N% (your usage so far this week) to see it against your week", saved / 1000),

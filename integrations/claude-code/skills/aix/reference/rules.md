@@ -9,6 +9,12 @@
   `aix --repo $PWD --db ../<name>.db stats` and the same `--repo`/`--db` on every call (never add `--accept-ignore`).
   One builder read 677 KB with sed/grep in an unindexed clone (about 90% of its tool output) while aix answered the
   rest in 13 KB.
+- **Files you create for the project live inside the repo, not in `/tmp`**: scratch scripts, notes, probe output, findings
+  and briefs go under the repo's scratch dir (e.g. `<repo>/.scratch/`, gitignored) so `aix grep|code|brief|outline` can
+  reach them; `/tmp`, `$TMPDIR`, `/var/tmp`, the harness's own scratchpad dir and any other temp or out-of-repo dir are invisible to aix, and the hook can only stay silent there (about
+  1,170 of one session's reads were of `/tmp` files). If the scratch dir is gitignored, list the folders to index in
+  `.aix/config.toml` (`include = [".scratch/*/*.md", ...]`), never edit `.gitignore` for it. Big command output is parked
+  with `aix put`, not written to `/tmp`.
 - **Test and build output**: never let it scroll into context. `cargo test 2>&1 | aix put t -` (or `npm test`,
   `./gradlew test`, a log), then `aix grep 'FAILED|panicked|error' '@t'`, `aix tail -n 40 '@t'`; re-query `'@t'` instead of rerunning.
 - **Re-reading a file**: a second `sed -n`/`cat` of the same file means use `aix outline F [words]`, `aix code F:A-B` or

@@ -80,7 +80,7 @@ fn currentweek_relates_the_saving_to_this_weeks_usage() {
     }
     let w = [("AIX_WEEKLY_TOKENS", "1_000")];
     let s = e.aix(&["stats", "--savings", "--currentweek", "28%"], &w);
-    assert!(s.contains("You have used 28% of your week") && s.contains("% of your usage; ~") && s.contains("if only half of these lookups would have been asked without aix): without aix you would be at ~"), "{s}");
+    assert!(s.contains("You have used 28% of your week") && s.contains("% of your usage). Without aix your usage would have been ") && !s.contains("if only half"), "{s}");
     assert!(s.contains("  how: each answer is counted as bytes returned x K"), "{s}");
     assert!(s.contains("  calibration: the ratios were measured on ") && s.contains("  cross-check: first reading recorded"), "{s}");
     assert!(s.contains("measured ") && s.contains(" (estimate): ~"), "{s}");

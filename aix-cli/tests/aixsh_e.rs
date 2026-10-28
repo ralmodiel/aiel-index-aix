@@ -315,7 +315,7 @@ with open("d.csv", "w", newline="") as f:
     w = csv.writer(f)
     w.writerow(["name", "city", "score"])
     for i in range(2000):
-        w.writerow([random.choice(["ann", "bob, jr", 'cy "q"', "dee"]), random.choice(["Manila", "Cebu", "Davao"]), random.randint(0, 100)])
+        w.writerow([random.choice(["ann", "bob, jr", 'cy "q"', "dee"]), random.choice(["Oslo", "Lima", "Kyoto"]), random.randint(0, 100)])
 "#;
     std::fs::write(e.repo.join("gen.py"), py).unwrap();
     sh(&format!("{python} gen.py"), &e.repo);

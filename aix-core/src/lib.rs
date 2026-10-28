@@ -1303,12 +1303,43 @@ fn query_flags(arg: &str) -> String {
     f.join(" ")
 }
 
+/// Records this week's `--currentweek` reading (one row per week, the latest wins) and compares it with the earlier weeks:
+/// the estimate says "without aix you would be at X%", so weeks with more estimated saving should not read higher real usage
+/// for similar work. Needs a few weeks of readings before the comparison says anything.
+fn usage_crosscheck(conn: &rusqlite::Connection, week: i64, pct: f64, saved_pts: f64, queries: i64) -> Vec<String> {
+    let _ = conn.execute("CREATE TABLE IF NOT EXISTS usage_readings(week INTEGER PRIMARY KEY, pct REAL, saved_pts REAL, queries INTEGER)", []);
+    let _ = conn.execute("INSERT OR REPLACE INTO usage_readings(week, pct, saved_pts, queries) VALUES(?,?,?,?)", rusqlite::params![week, pct, saved_pts, queries]);
+    let prev = query::rows(conn, "SELECT week, pct, saved_pts, queries FROM usage_readings WHERE week < ?1 ORDER BY week DESC LIMIT 4", &[&week]);
+    if prev.is_empty() {
+        return vec!["  cross-check: first reading recorded; rerun with --currentweek each week and this compares your real usage with the estimate".to_string()];
+    }
+    let mut v: Vec<String> = prev
+        .iter()
+        .map(|r| format!("week of {}: used {:.0}% with ~{:.1} points estimated saved ({} queries)", local_minute(r[0].parse().unwrap_or(0)).split(' ').next().unwrap_or(""), r[1].parse::<f64>().unwrap_or(0.0), r[2].parse::<f64>().unwrap_or(0.0), r[3]))
+        .collect();
+    v.reverse();
+    let all = query::rows(conn, "SELECT pct, saved_pts FROM usage_readings", &[]);
+    let note = if all.len() >= 4 {
+        let xs: Vec<(f64, f64)> = all.iter().map(|r| (r[1].parse().unwrap_or(0.0), r[0].parse().unwrap_or(0.0))).collect();
+        let n = xs.len() as f64;
+        let (mx, my) = (xs.iter().map(|p| p.0).sum::<f64>() / n, xs.iter().map(|p| p.1).sum::<f64>() / n);
+        let (sxy, sxx, syy) = xs.iter().fold((0.0, 0.0, 0.0), |a, p| (a.0 + (p.0 - mx) * (p.1 - my), a.1 + (p.0 - mx).powi(2), a.2 + (p.1 - my).powi(2)));
+        let r = if sxx > 0.0 && syy > 0.0 { sxy / (sxx * syy).sqrt() } else { 0.0 };
+        format!("; over {} weeks the correlation of estimated saving and real usage is {r:+.2} (a negative value supports the estimate, near 0 means it cannot be confirmed)", all.len())
+    } else {
+        format!("; {} week(s) recorded, 4 are needed before a correlation means anything", all.len())
+    };
+    vec![format!("  cross-check (real usage vs estimate): {}{note}", v.join(" | "))]
+}
+
 /// The estimate a report counts, per call: `bytes_out * K`, K being the average cost ratio (no-aix baseline / aix answer)
 /// measured per command on ~270 sampled queries of a real repo: a plain `git grep` (60 lines) plus one partial Read for
 /// lookups, a whole-file Read (40 KB cap) for `outline`/`brief`, `git log --stat` for `history`, the same grep for `grep`.
 /// A reader (`code`, `cat`...) saves nothing over a Read of the same span (K=1); commands not sampled use 3.0. The
 /// baseline assumes the question would have been asked anyway, so the figure is an estimate, not a measurement of a
 /// session. Applied when reporting, so older rows use the same K.
+/// When and on what the K ratios in EST_SQL were measured (shown in the report).
+const SAVINGS_CALIBRATED: &str = "on 2026-10-28, 270 sampled queries of a repo with ~1.4K files and ~7K symbols";
 const EST_SQL: &str = "max(bytes_out, bytes_out * CASE WHEN cmd IN ('code','cat','head','tail','sed') THEN 1.0 WHEN cmd='brief' THEN 12.49 WHEN cmd='bugs' THEN 4.46 WHEN cmd='callers' THEN 42.17 WHEN cmd='endpoint' THEN 23.99 WHEN cmd='grep' THEN 4.17 WHEN cmd='history' THEN 1.83 WHEN cmd='impact' THEN 94.04 WHEN cmd='outline' THEN 6.66 WHEN cmd='qa' THEN 2.71 WHEN cmd='symbol' THEN 61.36 WHEN cmd='tasks' THEN 2.92 WHEN cmd='text' THEN 6.32 WHEN cmd='trace' THEN 7.13 ELSE 3.0 END)";
 
 fn log_savings(ix: &Index, cmd: &str, arg: &str, out: &Out, ms: i64) {
@@ -1387,6 +1418,7 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
         w
     };
     let since = week_start.unwrap_or(0);
+    let ws_key = since;
     let r = query::rows(
         &ix.conn,
         &format!("SELECT cmd, count(*), sum(bytes_out), CAST(sum({EST_SQL}) AS INT), CAST(COALESCE(avg(ms), 0) AS INT), COALESCE(max(ms), 0) FROM savings WHERE ts >= ?1 GROUP BY cmd ORDER BY count(*) DESC"),
@@ -1430,6 +1462,7 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
                 let of_week = saved as f64 / w as f64 * 100.0;
                 share = json!({"plan": ix.cfg.plan, "weekly_tokens": w, "pct_of_week": (of_week * 10.0).round() / 10.0});
                 tail.push("  how: each answer is counted as bytes returned x K, K = the average no-aix/aix cost ratio measured per command on ~270 sampled queries (a plain git grep of 60 lines + one partial read; code/cat/head/tail/sed count 1x, commands not sampled 3x); it assumes every query would otherwise have been asked and answered that way".to_string());
+                tail.push(format!("  calibration: the ratios were measured {SAVINGS_CALIBRATED}; they go stale when answer sizes or the repo change, re-measure (and update EST_SQL) after big output changes"));
                 let mut per: Vec<(String, i64)> = r.iter().map(|x| (x[0].clone(), x[3].parse::<i64>().unwrap_or(0) - x[2].parse::<i64>().unwrap_or(0))).filter(|(_, v)| *v > 0).collect();
                 per.sort_by(|x, y| y.1.cmp(&x.1));
                 let all_saved: i64 = per.iter().map(|x| x.1).sum();
@@ -1447,17 +1480,18 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
                     Some(p) if p > 0.0 => {
                         // the week's real usage is `p`% of the limit: the saving is of_week points of it, without aix the week would be p + of_week
                         let (without, of_usage) = (p + of_week, of_week / p * 100.0);
+                        tail.extend(usage_crosscheck(&ix.conn, ws_key, p, of_week, n));
                         share["current_week_pct"] = json!(p);
                         share["pct_without_aix"] = json!((without * 10.0).round() / 10.0);
                         share["pct_of_usage"] = json!((of_usage * 10.0).round() / 10.0);
                         share["pct_of_week_if_half_asked"] = json!((of_week / 2.0 * 10.0).round() / 10.0);
-                        format!("  measured {span}: ~{}K tokens saved (this repo only). You have used {p:.0}% of your week; aix saved ~{of_week:.1} points of it ({of_usage:.0}% of your usage; ~{:.1} if only half of these lookups would have been asked without aix): without aix you would be at ~{without:.1}%", saved / 1000, of_week / 2.0)
+                        format!("  measured {span} (estimate): ~{}K tokens saved (this repo only). You have used {p:.0}% of your week; aix saved ~{of_week:.1} points of it ({of_usage:.0}% of your usage; ~{:.1} if only half of these lookups would have been asked without aix): without aix you would be at ~{without:.1}%", saved / 1000, of_week / 2.0)
                     }
-                    Some(_) => format!("  measured {span}: ~{}K tokens saved (this repo only); --currentweek is 0%, so there is no usage to compare against", saved / 1000),
-                    None => format!("  measured {span}: ~{}K tokens saved (this repo only). Add --currentweek N% (your usage so far this week) to see it against your week", saved / 1000),
+                    Some(_) => format!("  measured {span} (estimate): ~{}K tokens saved (this repo only); --currentweek is 0%, so there is no usage to compare against", saved / 1000),
+                    None => format!("  measured {span} (estimate): ~{}K tokens saved (this repo only). Add --currentweek N% (your usage so far this week) to see it against your week", saved / 1000),
                 });
             } else {
-                measured = Some(format!("  measured {span}: ~{}K tokens saved (this repo only); to see it against your week set AIX_WEEKLY_TOKENS=N (or `weekly_tokens = N` in config.toml) and pass --currentweek N%", saved / 1000));
+                measured = Some(format!("  measured {span} (estimate): ~{}K tokens saved (this repo only); to see it against your week set AIX_WEEKLY_TOKENS=N (or `weekly_tokens = N` in config.toml) and pass --currentweek N%", saved / 1000));
             }
             if week_start.is_some() {
                 let all = query::rows(&ix.conn, &format!("SELECT count(*), CAST(COALESCE(sum({EST_SQL})-sum(bytes_out),0) AS INT), COALESCE(min(ts),0) FROM savings"), &[]);

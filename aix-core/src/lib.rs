@@ -1429,6 +1429,14 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
             if w > 0 {
                 let of_week = saved as f64 / w as f64 * 100.0;
                 share = json!({"plan": ix.cfg.plan, "weekly_tokens": w, "pct_of_week": (of_week * 10.0).round() / 10.0});
+                tail.push("  how: each answer is counted as bytes returned x K, K = the average no-aix/aix cost ratio measured per command on ~270 sampled queries (a plain git grep of 60 lines + one partial read; code/cat/head/tail/sed count 1x, commands not sampled 3x); it assumes every query would otherwise have been asked and answered that way".to_string());
+                let mut per: Vec<(String, i64)> = r.iter().map(|x| (x[0].clone(), x[3].parse::<i64>().unwrap_or(0) - x[2].parse::<i64>().unwrap_or(0))).filter(|(_, v)| *v > 0).collect();
+                per.sort_by(|x, y| y.1.cmp(&x.1));
+                let all_saved: i64 = per.iter().map(|x| x.1).sum();
+                if all_saved > 0 && per.len() > 1 {
+                    let top: Vec<String> = per.iter().take(3).map(|(c, v)| format!("{c} {}%", v * 100 / all_saved)).collect();
+                    tail.push(format!("  where it comes from: {} of the saving (few commands dominate: if those answers were seldom needed the figure is lower)", top.join(", ")));
+                }
                 tail.push(format!(
                     "  note: a week is assumed to be ~{} tokens{} (an estimate, not your real limit): the points below are approximate; set AIX_WEEKLY_TOKENS=N to use your own",
                     if w >= 1_000_000 { format!("{}M", w / 1_000_000) } else { format!("{}K", w / 1000) },
@@ -1442,7 +1450,8 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
                         share["current_week_pct"] = json!(p);
                         share["pct_without_aix"] = json!((without * 10.0).round() / 10.0);
                         share["pct_of_usage"] = json!((of_usage * 10.0).round() / 10.0);
-                        format!("  measured {span}: ~{}K tokens saved (this repo only). You have used {p:.0}% of your week; aix saved ~{of_week:.1} points of it ({of_usage:.0}% of your usage): without aix you would be at ~{without:.1}%", saved / 1000)
+                        share["pct_of_week_if_half_asked"] = json!((of_week / 2.0 * 10.0).round() / 10.0);
+                        format!("  measured {span}: ~{}K tokens saved (this repo only). You have used {p:.0}% of your week; aix saved ~{of_week:.1} points of it ({of_usage:.0}% of your usage; ~{:.1} if only half of these lookups would have been asked without aix): without aix you would be at ~{without:.1}%", saved / 1000, of_week / 2.0)
                     }
                     Some(_) => format!("  measured {span}: ~{}K tokens saved (this repo only); --currentweek is 0%, so there is no usage to compare against", saved / 1000),
                     None => format!("  measured {span}: ~{}K tokens saved (this repo only). Add --currentweek N% (your usage so far this week) to see it against your week", saved / 1000),

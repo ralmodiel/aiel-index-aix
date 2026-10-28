@@ -96,6 +96,10 @@ fn update_then_brief() {
         e.contains("roles: clerk,admin,manager") && e.contains("client ordersApi.cancel") && e.contains("Orders.tsx:"),
         "{e}"
     );
+    // several endpoints of one handler file: the full path once, then the base name
+    let all = sk(&r, &["endpoint", "/api/orders"]);
+    assert_eq!(all.matches("backend/src/main/java/com/acme/api/OrderResource.java:").count(), 1, "{all}");
+    assert!(all.contains("-> OrderResource.java:"), "{all}");
 }
 
 #[test]

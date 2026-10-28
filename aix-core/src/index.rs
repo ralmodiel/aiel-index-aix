@@ -789,7 +789,7 @@ impl Index {
         let pending = self.meta("update_pending").is_some()
             || self.conn.query_row("SELECT EXISTS(SELECT 1 FROM cg_dirty UNION ALL SELECT 1 FROM dm_dirty)", [], |r| r.get::<_, i64>(0)).unwrap_or(0) != 0;
         let full = full || self.meta("built").is_none() || self.meta("extract_rev").as_deref() != Some(rev);
-        let (listed, skipped) = walk::list_with_skips(&self.repo, &self.exclude, self.cfg.max_file_bytes, self.cfg.index_untracked);
+        let (listed, skipped) = walk::list_with_skips(&self.repo, &self.exclude, self.cfg.max_file_bytes, self.cfg.index_untracked, &self.cfg.include);
         let mut known: HashMap<String, (String, i64, i64)> = HashMap::new();
         if !full {
             let mut st = self.conn.prepare("SELECT path, hash, mtime_ns, bytes FROM files")?;
@@ -1230,7 +1230,7 @@ let absent_now = self.absent_tracked();
     /// index, the root ignore files and the config file. None when it cannot be computed cheaply (not a plain
     /// `.git` directory, untracked files indexed): `update` then always does the full check.
     fn tree_sig(&self) -> Option<String> {
-        if self.cfg.index_untracked {
+        if self.cfg.index_untracked || !self.cfg.include.is_empty() {
             return None;
         }
         let git = self.repo.join(".git");

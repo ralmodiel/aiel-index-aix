@@ -2510,9 +2510,14 @@ pub fn endpoint(ix: &Index, arg: &str, out: &mut Out) {
     let mut bare_rows: Vec<String> = vec![];
     // a class or handler built only for one build profile (Quarkus @IfBuildProfile / @UnlessBuildProfile)
     let mut profile_of: HashMap<(String, String), Option<String>> = HashMap::new();
+    // compact text: a handler file named in full once, then by base name; a scripts/specs list equal to the one above
+    // is not repeated (--json / --bare carry every value)
+    let (mut prev_file, mut prev_sr) = (String::new(), vec![]);
     for e in found.into_iter().take(lim) {
         let roles: Vec<&str> = e[6].split(',').filter(|x| !x.is_empty()).collect();
-        out.emit(format!("{} {}{} -> {}:{} {}()", e[0], e[1], rel_tag(c, &e[3], e[4].parse().unwrap_or(0)), e[3], e[4], e[5]));
+        let shown_file = if e[3] == prev_file { base(&e[3]).to_string() } else { e[3].clone() };
+        prev_file = e[3].clone();
+        out.emit(format!("{} {}{} -> {}:{} {}()", e[0], e[1], rel_tag(c, &e[3], e[4].parse().unwrap_or(0)), shown_file, e[4], e[5]));
         out.hit("endpoint", &e[3], e[4].parse().unwrap_or(0), &format!("{} {}", e[0], e[1]));
         out.emit(format!("  roles: {}", ep_roles_label(&e[6])));
         let profile = profile_of
@@ -2547,7 +2552,7 @@ pub fn endpoint(ix: &Index, arg: &str, out: &mut Out) {
                 cl[3],
                 callers.len(),
                 v.join(", "),
-                if callers.len() > 8 { " …" } else { "" }
+                if callers.len() > 8 { format!(" +{} (aix callers {}.{})", callers.len() - 8, cl[0], cl[1]) } else { String::new() }
             ));
         }
         let direct = rows(
@@ -2563,9 +2568,15 @@ pub fn endpoint(ix: &Index, arg: &str, out: &mut Out) {
         }
         let sr = rows(c, "SELECT DISTINCT file FROM script_refs WHERE norm=?", &[&e[2]]);
         if !sr.is_empty() {
-            let v: Vec<&str> = sr.iter().take(8).map(|x| x[0].as_str()).collect();
-            out.emit(format!("  scripts/specs: {}{}", v.join(", "), if sr.len() > 8 { " …" } else { "" }));
+            if sr == prev_sr {
+                out.emit("  scripts/specs: same as above".to_string());
+            } else {
+                let v: Vec<&str> = sr.iter().take(3).map(|x| x[0].as_str()).collect();
+                let more = if sr.len() > 3 { format!(" +{} (aix endpoint '{} {}' --json)", sr.len() - 3, e[0], e[1]) } else { String::new() };
+                out.emit(format!("  scripts/specs: {}{more}", v.join(", ")));
+            }
         }
+        prev_sr = sr.clone();
         if let Some(h) = out.hits.last_mut().and_then(|h| h.as_object_mut()) {
             // --json: every role of the handler, as a list; the client wrappers and the scripts/specs naming it
             h.insert("roles".into(), json!(roles));

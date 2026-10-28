@@ -688,6 +688,9 @@ pub fn run(ix: &mut Index, argv: &[String], out: &mut Out) {
         if found.is_empty() { String::new() } else { format!(", {high} high") },
         if fix { format!(", {} fixed", found.iter().filter(|x| x.fixed).count()) } else { String::new() }
     ));
+    if !ix.cfg.include.is_empty() {
+        out.emit(format!("  note: .aix/config.toml include = {:?} indexes matching gitignored files (text only, 256 KB, secret names refused)", ix.cfg.include));
+    }
     let mut sorted: Vec<&Finding> = found.iter().collect();
     sorted.sort_by_key(|x| match x.sev {
         "high" => 0,

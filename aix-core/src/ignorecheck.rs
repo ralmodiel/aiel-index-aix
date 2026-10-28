@@ -1062,7 +1062,7 @@ fn scan_plain(repo: &Path) -> Report {
 
 /// "would index: N files (B) — top dirs ..." from the same listing the index uses.
 fn would_index(repo: &Path) -> Vec<String> {
-    let (listed, skipped) = walk::list_with_skips(repo, &[], 1_500_000, false);
+    let (listed, skipped) = walk::list_with_skips(repo, &[], 1_500_000, false, &[]);
     let mut by: BTreeMap<String, (u64, u64)> = BTreeMap::new();
     let mut total = 0u64;
     for l in &listed {

@@ -96,6 +96,10 @@ fn update_then_brief() {
         e.contains("roles: clerk,admin,manager") && e.contains("client ordersApi.cancel") && e.contains("Orders.tsx:"),
         "{e}"
     );
+    // several endpoints of one handler file: the full path once, then the base name
+    let all = sk(&r, &["endpoint", "/api/orders"]);
+    assert_eq!(all.matches("backend/src/main/java/com/acme/api/OrderResource.java:").count(), 1, "{all}");
+    assert!(all.contains("-> OrderResource.java:"), "{all}");
 }
 
 #[test]
@@ -722,6 +726,31 @@ fn untracked_files_are_indexed_only_when_opted_in() {
     sk(&r, &["update", "--full"]);
     let n = sk(&r, &["sql", "SELECT count(*) FROM files WHERE path='src/fresh.ts'"]);
     assert!(n.trim().ends_with('1'), "{n}");
+}
+
+#[test]
+fn include_globs_index_gitignored_notes_but_not_secrets_vendored_or_symlinks() {
+    let (_d, r) = repo();
+    std::fs::write(r.join(".gitignore"), "scratch/\n").unwrap();
+    commit_all(&r, "ignore scratch");
+    std::fs::create_dir_all(r.join("scratch/node_modules/x")).unwrap();
+    std::fs::write(r.join("scratch/notes.md"), "includedNoteMarker\n").unwrap();
+    std::fs::write(r.join("scratch/tool.py"), "included_py_marker = 1\n").unwrap();
+    std::fs::write(r.join("scratch/.env.md"), "envSecretMarker\n").unwrap();
+    std::fs::write(r.join("scratch/node_modules/x/dep.md"), "vendoredMarker\n").unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(r.join("scratch/notes.md"), r.join("scratch/link.md")).unwrap();
+    std::fs::create_dir_all(r.join(".aix")).unwrap();
+    std::fs::write(r.join(".aix/config.toml"), "include = [\"scratch/**/*.md\", \"scratch/**/*.py\"]\n").unwrap();
+    sk(&r, &["update", "--full"]);
+    let q = |p: &str| sk(&r, &["sql", &format!("SELECT count(*) FROM files WHERE path='{p}'")]);
+    assert!(q("scratch/notes.md").trim().ends_with('1'));
+    assert!(q("scratch/tool.py").trim().ends_with('1'));
+    for p in ["scratch/.env.md", "scratch/node_modules/x/dep.md", "scratch/link.md"] {
+        assert!(q(p).trim().ends_with('0'), "{p}");
+    }
+    assert!(sk(&r, &["grep", "includedNoteMarker"]).contains("scratch/notes.md"));
+    assert!(sk(&r, &["files", "scratch"]).contains("include"));
 }
 
 #[test]

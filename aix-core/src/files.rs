@@ -682,6 +682,9 @@ pub fn run(ix: &Index, cmd: &str, toks: &[String], per_page: Option<usize>) -> A
     let ndirs = entries.len() - nfiles;
     let what = if ndirs > 0 && nfiles > 0 { format!("{nfiles} files, {ndirs} dirs") } else if ndirs > 0 { format!("{ndirs} dirs") } else { format!("{nfiles} files") };
     let mut gi = "indexed files only (gitignored, secret, binary, oversized are not listed: `git ls-files -o` / `find` show them)".to_string();
+    if !ix.cfg.include.is_empty() {
+        gi = format!("{gi}; gitignored files matching .aix/config.toml include = {:?} are listed too", ix.cfg.include);
+    }
     // tracked files of types aix does not index, under what was listed: named (an `ls` is not the whole directory)
     let roots: Vec<String> = sels.iter().filter_map(|s| match s { Sel::Dir(d) => Some(d.clone()), _ => None }).collect();
     let whole = sels.is_empty();

@@ -419,6 +419,9 @@ enum Cmd {
         scripts: bool,
     },
     /// Read-only SQL: sql "SELECT ..." [--bare] [--head N] [--offset N]
+    ///
+    /// Caps: at most 500 rows and 64 KB per answer (a larger --limit is clamped; page with --offset), and each
+    /// value is clipped to 200 characters even with --width 0 (select substr(col, 201) for the rest).
     Sql {
         #[arg(allow_hyphen_values = true)]
         args: Vec<String>,

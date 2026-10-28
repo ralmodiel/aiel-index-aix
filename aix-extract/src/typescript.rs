@@ -131,13 +131,15 @@ pub fn extract_file(f: &SourceFile, rows: &mut Rows) {
                 if let (Some(k), Some(v)) = (kids.first(), kids.get(1)) {
                     let prop = text(*k, src);
                     if UI_PROPS.contains(&prop) {
-                        let val = match v.kind() {
-                            "string" => js_string(*v, src),
-                            "jsx_expression" => v.named_child(0).and_then(|e| js_string(e, src)),
-                            _ => None,
-                        };
-                        if let Some(t) = val.map(|s| squash(&s)).filter(|s| is_wordy(s)) {
-                            push_ui(rows, f, *v, t, format!("prop:{prop}"), root, src);
+                        match v.kind() {
+                            "string" => ui_from_arg(*v, src, f, rows, &format!("prop:{prop}"), root),
+                            // `title={busy ? 'Saving…' : 'Save'}` too
+                            "jsx_expression" => {
+                                if let Some(e) = v.named_child(0) {
+                                    ui_from_arg(e, src, f, rows, &format!("prop:{prop}"), root);
+                                }
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -351,7 +353,9 @@ fn literal_skip_context(n: Node, src: &str) -> bool {
                 .child_by_field_name("key")
                 .map(|k| text(k, src).trim_matches(['"', '\'']).to_string())
                 .unwrap_or_default();
-            is_key || NON_UI_KEYS.contains(&key.as_str())
+            // `{ name: 'Reports & Analysis', items: [...] }`: a multi-word capitalised name is a shown label
+            let shown_name = key == "name" && text(n, src).contains(' ');
+            is_key || NON_UI_KEYS.contains(&key.as_str()) && !shown_name
         }
         "binary_expression" => {
             let op = p.child_by_field_name("operator").map(|o| text(o, src)).unwrap_or("");
@@ -821,6 +825,13 @@ fn ui_from_arg(a: Node, src: &str, f: &SourceFile, rows: &mut Rows, kind: &str, 
         }
     } else if a.kind() == "ternary_expression" {
         for c in named_children(a).into_iter().skip(1) {
+            ui_from_arg(c, src, f, rows, kind, root);
+        }
+    } else if a.kind() == "parenthesized_expression"
+        || a.kind() == "binary_expression" && a.child_by_field_name("operator").is_some_and(|o| matches!(o.kind(), "&&" | "||" | "??"))
+    {
+        // `(cond ? 'A' : 'B')`, `x && 'Text'`, `a || 'Fallback'`
+        for c in named_children(a) {
             ui_from_arg(c, src, f, rows, kind, root);
         }
     }

@@ -296,3 +296,20 @@ export function notes(a: A) {
     }
     assert!(!texts.iter().any(|t| t.contains("row-") || t.contains("px-2") || t.contains("/api/") || t.contains("/the/") || t.contains("-${")), "{texts:?}");
 }
+
+#[test]
+fn typescript_ternary_props_are_ui_text() {
+    let code = "export function B({ busy }) {\n  return <button title={busy ? 'Capturing screenshot' : 'Report a bug'} placeholder={busy && 'Please wait here'}>x</button>;\n}\n";
+    let r = sx::typescript::TypeScript.extract(&fixture(), &[SourceFile::new("frontend/src/B.tsx", code)]);
+    for t in ["Capturing screenshot", "Report a bug", "Please wait here"] {
+        assert!(r.ui_strings.iter().any(|u| u.text == t && u.kind.starts_with("prop:")), "{t}: {:?}", r.ui_strings);
+    }
+}
+
+#[test]
+fn typescript_multiword_name_values_are_ui_text() {
+    let code = "export const GROUPS = [{ name: 'Reports & Analysis', items: ['Grade Book'] }, { name: 'reportsTab' }];\n";
+    let r = sx::typescript::TypeScript.extract(&fixture(), &[SourceFile::new("frontend/src/G.tsx", code)]);
+    assert!(r.ui_strings.iter().any(|u| u.text == "Reports & Analysis"), "{:?}", r.ui_strings);
+    assert!(!r.ui_strings.iter().any(|u| u.text == "reportsTab"));
+}

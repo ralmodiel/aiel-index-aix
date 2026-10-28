@@ -416,7 +416,8 @@ fn token_calls(tt: Node, src: &str, out: &mut Vec<HiddenCall>) {
                     } else {
                         None
                     };
-                    (path.join("::"), st)
+                    // a lowercase module path (`util::f(`) carries no receiver, like the same call outside a macro
+                    (if st.is_some() { path.join("::") } else { String::new() }, st)
                 };
                 if is_method && !path.is_empty() {
                     continue;

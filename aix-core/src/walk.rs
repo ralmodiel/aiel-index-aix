@@ -231,6 +231,52 @@ fn candidates(repo: &Path, untracked: bool) -> (Vec<String>, bool) {
     (out, false)
 }
 
+pub const INCLUDE_MAX_FILES: usize = 5000;
+pub const INCLUDE_MAX_BYTES: u64 = 256 * 1024;
+
+/// Files matching the config `include` globs (gitignored ones too): no symlinks, never inside vendored/build dirs or a
+/// nested checkout (a dir holding `.git`). Returns (matches, matches over INCLUDE_MAX_BYTES); `wanted` filters the rest.
+fn included(repo: &Path, globs: &[String]) -> (Vec<String>, Vec<String>) {
+    let mut ob = ignore::overrides::OverrideBuilder::new(repo);
+    for g in globs {
+        if let Err(e) = ob.add(g) {
+            eprintln!("aix: ignoring include glob {g:?}: {e}");
+        }
+    }
+    let Ok(ov) = ob.build() else { return (vec![], vec![]) };
+    let root = repo.to_path_buf();
+    let walker = ignore::WalkBuilder::new(repo)
+        .standard_filters(false)
+        .follow_links(false)
+        .filter_entry(move |e| {
+            if !e.file_type().is_some_and(|t| t.is_dir()) || e.path() == root {
+                return true;
+            }
+            let n = e.file_name().to_string_lossy();
+            !matches!(n.as_ref(), ".git" | "node_modules" | ".aix" | "target" | "dist" | "build" | "worktrees" | ".venv" | "venv" | "__pycache__")
+                && !e.path().join(".git").exists()
+        })
+        .build();
+    let (mut ok, mut big) = (vec![], vec![]);
+    for e in walker.flatten() {
+        if !e.file_type().is_some_and(|t| t.is_file()) {
+            continue; // symlinks are neither followed nor listed
+        }
+        let Ok(rel) = e.path().strip_prefix(repo) else { continue };
+        if !ov.matched(rel, false).is_whitelist() {
+            continue;
+        }
+        let rel = rel.to_string_lossy().replace('\\', "/");
+        if e.metadata().is_ok_and(|m| m.len() > INCLUDE_MAX_BYTES) {
+            big.push(rel);
+        } else {
+            ok.push(rel);
+        }
+    }
+    ok.sort();
+    (ok, big)
+}
+
 /// Wanted files that could not be indexed, with the reason (shown by `grep` so a miss is never silent).
 #[derive(Default, Clone, Debug)]
 pub struct Skipped {
@@ -245,15 +291,33 @@ pub struct Skipped {
 pub const BINARY_EXT: &[&str] = &["png", "jpg", "jpeg", "gif", "ico", "webp", "svg", "woff", "woff2", "ttf", "eot", "otf", "pdf", "zip", "gz", "tgz", "bz2", "xz", "7z", "jar", "war", "class", "mp4", "mp3", "wav", "ogg", "webm", "mov", "bin", "exe", "dll", "so", "dylib", "a", "o", "lock", "map", "pem", "key", "crt", "p12", "keystore", "jks", "psd", "ai", "sketch", "fig", "xlsx", "xls", "docx", "doc", "pptx", "odt", "db", "sqlite", "pyc", "wasm", "bmp", "tif", "tiff", "heic", "avif", "mkv", "avi", "flac", "m4a", "aac", "dat"];
 
 pub fn list(repo: &Path, extra: &[Regex], max_bytes: u64, untracked: bool) -> Vec<Listed> {
-    list_with_skips(repo, extra, max_bytes, untracked).0
+    list_with_skips(repo, extra, max_bytes, untracked, &[]).0
 }
 
 /// Listing of wanted files (repo-relative, forward slashes): git-tracked files (plus untracked ones when
 /// `untracked`), regular files only (no symlinks), and the wanted files left out (too big, unusable name).
-pub fn list_with_skips(repo: &Path, extra: &[Regex], max_bytes: u64, untracked: bool) -> (Vec<Listed>, Skipped) {
+pub fn list_with_skips(repo: &Path, extra: &[Regex], max_bytes: u64, untracked: bool, include: &[String]) -> (Vec<Listed>, Skipped) {
     let mut out = vec![];
     let mut skipped = Skipped::default();
-    let (cands, tracked_set) = candidates(repo, untracked);
+    let (mut cands, tracked_set) = candidates(repo, untracked);
+    let mut inc: std::collections::HashSet<String> = Default::default();
+    if !include.is_empty() {
+        let have: std::collections::HashSet<&String> = cands.iter().collect();
+        let (found, over) = included(repo, include);
+        let found: Vec<String> = found.into_iter().filter(|f| !have.contains(f) && wanted(f, extra)).collect();
+        for f in found {
+            if inc.len() >= INCLUDE_MAX_FILES {
+                skipped.files.push((f, "over the include cap"));
+            } else {
+                inc.insert(f);
+            }
+        }
+        for f in over.into_iter().filter(|f| wanted(f, extra)) {
+            skipped.files.push((f, "too big"));
+        }
+        cands.extend(inc.iter().cloned());
+    }
+    let max_of = |rel: &str| if inc.contains(rel) { max_bytes.min(INCLUDE_MAX_BYTES) } else { max_bytes };
     // one stat per file, in parallel (results kept in listing order: the same output as a serial pass)
     enum One {
         Skip,
@@ -283,7 +347,7 @@ pub fn list_with_skips(repo: &Path, extra: &[Regex], max_bytes: u64, untracked: 
         if !md.file_type().is_file() {
             return One::Skip;
         }
-        if md.len() > max_bytes || (md.len() > LIGHT_MAX_BYTES && LIGHT_EXT.contains(&ext_lower(&rel).as_str()) && !JSON_OK.is_match(&rel)) {
+        if md.len() > max_of(&rel) || (md.len() > LIGHT_MAX_BYTES && LIGHT_EXT.contains(&ext_lower(&rel).as_str()) && !JSON_OK.is_match(&rel)) {
             return One::Skipped(rel, "too big");
         }
         let mtime_ns = md

@@ -48,7 +48,7 @@ deleted once read), so the hook stays under ~50 ms; the paste budget is enforced
 `aix privacy-check [--fix] [--deep] [--json]` scans what aix holds and reports one line per problem with a severity and the fix: stored text
 the current redactor would still change (index.db, logs.db, pastes.db), deny-listed or hidden-folder paths, agent-originated pastes, tracked
 files that look private (names and `file:line` only; your deny list from `$AIX_PRIVATE_MARKERS` or `~/.config/aix/private-markers`, applied only in a repo that ships `scripts/check-private.sh` or sets `private_markers = true` in `.aix/config.toml`), permissions,
-exceeded budgets, watches on files outside the repo. It never prints a secret. `--fix` purges, chmods and unwatches (every step listed, then a
+exceeded budgets, watches on files outside the repo; it notes an active `include` option. `include = ["notes/**/*.md", ...]` in `.aix/config.toml` (default empty) indexes gitignored files matching those repo-relative globs (scratch notes, scripts): text types only, 256 KB a file, at most 5000 files (the rest reported as skipped), secret names refused and content redacted as usual, symlinks never followed, never inside `node_modules`/`.git`/`target`/`dist`/`build` or a nested checkout; `files` says when it is on. It never prints a secret. `--fix` purges, chmods and unwatches (every step listed, then a
 vacuum); the exit status is 1 while a HIGH finding remains. `aix-init` runs it once, the session card adds one line when something is found,
 and each paste, attachment or log ingest checks its new rows.
 

@@ -48,6 +48,10 @@ pub struct Config {
     /// Also index files git does not track yet (default off: a fresh credentials file must never be indexed
     /// before it is committed).
     pub index_untracked: bool,
+    /// Repo-relative globs of gitignored files to index anyway (scratch notes, scripts): text types only, 256 KB a file,
+    /// at most 5000 files, secret names refused, no symlinks, never inside node_modules/.git/target/dist/build or a
+    /// nested checkout.
+    pub include: Vec<String>,
     /// Folders outside the repo whose scripts `aix script` lists by name and usage line (opt-in; `AIX_SCRIPT_DIRS` adds
     /// more, colon separated). Never indexed; the privacy deny list applies.
     pub script_dirs: Vec<String>,
@@ -88,6 +92,7 @@ impl Default for Config {
             max_tokens: 0,
             seed_patterns: true,
             index_untracked: false,
+            include: vec![],
             script_dirs: vec![],
             redact: Default::default(),
             source: "defaults".into(),

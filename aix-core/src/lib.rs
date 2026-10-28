@@ -1607,13 +1607,23 @@ impl Drop for ExclGuard<'_> {
     }
 }
 
+fn in_read_tx<T>(ix: &Index, f: impl FnOnce() -> T) -> T {
+    let began = ix.conn.is_autocommit() && ix.conn.execute_batch("BEGIN").is_ok();
+    let r = f();
+    if began {
+        let _ = ix.conn.execute_batch("COMMIT");
+    }
+    r
+}
+
 #[allow(clippy::too_many_arguments)]
 fn dispatch(ix: &Index, cmd: &str, arg: &str, argv: Option<&[String]>, o: &Opts, full: bool, max: Option<usize>, out: &mut Out) {
     match cmd {
-        "brief" => query::brief(ix, arg, out, full),
-        "route" => {
+        // the card builders run thousands of small statements: one read transaction instead of a lock per statement
+        "brief" => in_read_tx(ix, || query::brief(ix, arg, out, full)),
+        "route" => in_read_tx(ix, || {
             query::route(ix, arg, out, false, false);
-        }
+        }),
         "hints" => query::hints(ix, arg, out),
         "table" => tracecmd::table(ix, arg, out),
         "trace" => tracecmd::trace(ix, arg, out),

@@ -93,7 +93,10 @@ pub fn open(dir: &Path, global: bool, create: bool) -> Result<Option<SetStore>> 
         let _ = conn.execute_batch("ALTER TABLE items ADD COLUMN shape TEXT DEFAULT ''");
     }
     let _ = crate::sys::chmod(&path, 0o600);
-    Ok(Some(SetStore { conn, path, global }))
+    let st = SetStore { conn, path, global };
+    // a set past its TTL is gone for every reader, not only for `aix sets`
+    let _ = prune(&st);
+    Ok(Some(st))
 }
 
 pub fn valid_name(n: &str) -> bool {
@@ -1184,6 +1187,9 @@ fn with_tx_patient<T>(conn: &Connection, f: impl FnOnce(&Connection) -> Result<T
 pub fn put(st: &SetStore, set: &str, inputs: Vec<Input>, o: &PutOpts) -> Result<PutReport> {
     if !valid_name(set) {
         bail!("bad set name {set:?}: letters, digits, '_', '-', '.' (start with a letter or digit, at most 64)");
+    }
+    if aix_extract::redact::redact_block(set) != set {
+        bail!("set name looks like a secret (it would be stored as is): pick a plain name");
     }
     let t0 = std::time::Instant::now();
     let size0 = std::fs::metadata(&st.path).map(|m| m.len() as i64).unwrap_or(0);

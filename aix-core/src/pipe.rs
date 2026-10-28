@@ -146,7 +146,9 @@ pub fn to_out(a: Answer) -> Out {
     for (r, m) in a.rows.iter().skip(s).take(e - s) {
         let d = decorated(r, m);
         out.emit(if width > 0 && !f.bare { crate::outfmt::clip_line(&d, width) } else { d });
-        bare.push(crate::outfmt::clip_line(&r.render(m), width));
+        // a file NAME is repo text too: defanged like the decorated row (other rows carry already-defanged text)
+        let rendered = if matches!(r, Row::File { .. }) && m.raw.is_empty() { crate::query::neutralize(&r.render(m)) } else { r.render(m) };
+        bare.push(crate::outfmt::clip_line(&rendered, width));
         if let Some(p) = r.path() {
             out.hit(if m.kind.is_empty() { "row" } else { &m.kind }, p, r.line().unwrap_or(0) as i64, &match r {
                 Row::Hit { text, .. } => text.clone(),

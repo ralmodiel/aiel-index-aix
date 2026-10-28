@@ -480,3 +480,57 @@ fn list_shows(e: &Env, needle: &str, secs: u64) -> String {
         std::thread::sleep(std::time::Duration::from_millis(400));
     }
 }
+
+/// FIX-R: unknown log name, tracked secret file in --changed/diff, set TTL on read, damaged index rebuild,
+/// savings env validation, secret-shaped set name, untracked-file hint, masked-name read hint.
+#[test]
+fn fix_r_robustness() {
+    let e = env();
+    e.ok(&["update"]);
+    // C1: a log name that is not registered is an error, not another log's answer
+    let p = e.log("app.log");
+    append(&p, "2026-10-23 10:00:01,000 ERROR [t] a.B - boom\n");
+    e.ok(&["logs", "add", p.to_str().unwrap()]);
+    let (o, _, s) = e.run(&["logs", "errors", "nosuchlog", "--since", "3650d"]);
+    assert!(!s && o.contains("no registered log 'nosuchlog'"), "{o}");
+    let (o, _, s) = e.run(&["logs", "grep", "boom", "nosuchlog", "--since", "3650d"]);
+    assert!(!s && o.contains("no registered log"), "{o}");
+    // C3: a tracked, modified secret-looking file is not "untracked"; diff counts it as hidden
+    std::fs::write(e.repo.join(".env"), "A=1\n").unwrap();
+    git(&e.repo, &["add", "-f", ".env"]);
+    git(&e.repo, &["commit", "-q", "-m", "env"]);
+    append(&e.repo.join(".env"), "B=2\n");
+    let o = e.ok(&["files", "--changed"]);
+    assert!(o.contains(".env") && o.contains("tracked, modified") && !o.contains("untracked"), "{o}");
+    let o = e.ok(&["diff", "HEAD"]);
+    assert!(o.contains("1 file changed (1 hidden)") && !o.contains("no differences"), "{o}");
+    // C4: an expired set is gone for readers too
+    e.stdin(&["put", "ttlx", "-", "--ttl", "1s"], "hello\n");
+    std::thread::sleep(std::time::Duration::from_millis(2200));
+    let (o, _, _) = e.run(&["grep", "hello", "@ttlx"]);
+    assert!(!o.contains("@ttlx:1"), "{o}");
+    // C9: a secret-shaped set name is refused before anything is stored
+    let (_, err, s) = { let o = e.cmd(&["put", "AKIAIOSFODNN7EXAMPLE", "-"]).stdin(Stdio::null()).output().unwrap(); (String::new(), String::from_utf8_lossy(&o.stderr).into_owned() + &String::from_utf8_lossy(&o.stdout), o.status.success()) };
+    assert!(!s && err.contains("looks like a secret"), "{err}");
+    assert!(!has(&e.db_bytes("sets.db"), "AKIAIOSFODNN7EXAMPLE"));
+    // C6: an absurd weekly budget and a doubled % are refused
+    let o = e.cmd(&["stats", "--savings", "--currentweek", "28%"]).env("AIX_WEEKLY_TOKENS", "1").output().unwrap();
+    assert!(!o.status.success() && String::from_utf8_lossy(&o.stderr).contains("AIX_WEEKLY_TOKENS"));
+    assert!(!e.run(&["stats", "--savings", "--currentweek", "28%%"]).2);
+    // C11: a symbol of a new untracked file: the miss says why
+    std::fs::write(e.repo.join("src/fresh.py"), "def freshfn():\n    return 1\n").unwrap();
+    let (o, _, _) = e.run(&["symbol", "freshfn"]);
+    assert!(o.contains("untracked file") && o.contains("git add"), "{o}");
+    // C8: a masked name read back says it is masked
+    let (o, _, _) = e.run(&["cat", "src/***aws-key***.txt"]);
+    assert!(o.contains("masked name"), "{o}");
+    // C5: update --full moves a damaged .aix/index.db aside and rebuilds
+    let db = e.repo.join(".aix/index.db");
+    for x in ["-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{}{x}", db.display()));
+    }
+    std::fs::write(&db, vec![7u8; 50_000]).unwrap();
+    let (_, err, s) = e.run(&["update", "--full"]);
+    assert!(s && err.contains("moved aside"), "{err}");
+    assert!(e.ok(&["symbol", "OrderService"]).contains("OrderService.java"));
+}

@@ -895,7 +895,24 @@ fn real_main() -> Result<()> {
             );
         }
     }
-    let mut ix = Index::open(&repo, cli.db.as_deref())?;
+    let mut ix = match Index::open(&repo, cli.db.as_deref()) {
+        // `update --full` on a damaged <repo>/.aix index: it is derived data, so move it aside and rebuild
+        Err(e) if matches!(&cli.cmd, Cmd::Update { full: true, .. })
+            && e.to_string().contains("is not a usable SQLite database")
+            && db_path.parent().and_then(|d| d.file_name()).is_some_and(|n| n == ".aix") =>
+        {
+            let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+            for ext in ["", "-wal", "-shm"] {
+                let p = PathBuf::from(format!("{}{ext}", db_path.display()));
+                if p.exists() {
+                    std::fs::rename(&p, format!("{}.bad-{ts}", p.display()))?;
+                }
+            }
+            eprintln!("aix: {} was damaged; moved aside to {}.bad-{ts}, rebuilding", db_path.display(), db_path.display());
+            Index::open(&repo, cli.db.as_deref())?
+        }
+        r => r?,
+    };
     // the first build (and a full rebuild) waits for the user's .gitignore decision: exit 2 with the STOP block
     let unbuilt = ix.meta("built").is_none();
     let building = builds(unbuilt);
@@ -1060,8 +1077,15 @@ fn real_main() -> Result<()> {
         Cmd::Schema => ("schema", vec![], opts(None, false, false)),
         Cmd::Stats { savings, currentweek, .. } => {
             let mut o = opts(None, false, savings);
+            if let Ok(v) = std::env::var("AIX_WEEKLY_TOKENS") {
+                if savings && !v.trim().is_empty() && aix_core::config::parse_weekly_tokens(&v).is_none() {
+                    eprintln!("aix: AIX_WEEKLY_TOKENS={v:?} is not a whole number of tokens of at least 1000 (e.g. 116000000)");
+                    std::process::exit(2);
+                }
+            }
             if let Some(c) = currentweek {
-                match c.trim().trim_end_matches('%').trim().parse::<f64>() {
+                let c = c.trim();
+                match c.strip_suffix('%').unwrap_or(c).trim().parse::<f64>() {
                     Ok(p) if (0.0..=100.0).contains(&p) => o.current_week_pct = Some(p),
                     _ => {
                         eprintln!("aix: --currentweek takes a percentage between 0 and 100, e.g. 28%");

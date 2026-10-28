@@ -785,8 +785,17 @@ pub fn run(ix: &Index, cmd: &str, toks: &[String], per_page: Option<usize>) -> A
     for p in deleted.iter().filter(|p| keep(p)) {
         ans.rows.push(Row::File { path: p.clone() }, Meta { kind: "deleted".into(), text: "(deleted)".into(), ..Default::default() });
     }
+    // a tracked file can be unindexed too (a secret-looking path like .env): say so instead of "untracked"
+    let tracked: BTreeSet<String> = if unindexed.is_empty() {
+        BTreeSet::new()
+    } else {
+        let mut args = vec!["ls-files", "-z", "--"];
+        args.extend(unindexed.iter().map(String::as_str));
+        aix_extract::git::git_z(&ix.repo, &args).unwrap_or_default().into_iter().collect()
+    };
     for p in unindexed.iter().filter(|p| keep(p)).filter(|p| sels.is_empty() || sels.iter().any(|s| matches!(s, Sel::Glob(g) if g.matched_path_or_any_parents(p, false).is_ignore()) || matches!(s, Sel::Dir(d) if under(p, d)))) {
-        ans.rows.push(Row::File { path: p.clone() }, Meta { kind: "unindexed".into(), text: "(untracked, not indexed)".into(), ..Default::default() });
+        let text = if tracked.contains(p) { "(tracked, modified; not indexed: secret, binary or oversized)" } else { "(untracked, not indexed)" };
+        ans.rows.push(Row::File { path: p.clone() }, Meta { kind: "unindexed".into(), text: text.into(), ..Default::default() });
     }
     let read = if read_as.is_empty() { String::new() } else { format!(" ({})", read_as.join("; ")) };
     ans.head = vec![format!("== {what}{}{read} of {indexed} indexed", if a.lines { format!(", {total_lines} lines") } else { String::new() })];

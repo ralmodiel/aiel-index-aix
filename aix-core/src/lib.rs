@@ -1334,15 +1334,32 @@ fn usage_crosscheck(conn: &rusqlite::Connection, week: i64, pct: f64, saved_pts:
     vec![format!("  cross-check (real usage vs estimate): {}{note}", v.join(" | "))]
 }
 
-/// The estimate a report counts, per call: `bytes_out * K`, K being the average cost ratio (no-aix baseline / aix answer)
-/// measured per command on ~270 sampled queries of a real repo: a plain `git grep` (60 lines) plus one partial Read for
-/// lookups, a whole-file Read (40 KB cap) for `outline`/`brief`, `git log --stat` for `history`, the same grep for `grep`.
-/// A reader (`code`, `cat`...) saves nothing over a Read of the same span (K=1); commands not sampled use 3.0. The
-/// baseline assumes the question would have been asked anyway, so the figure is an estimate, not a measurement of a
-/// session. Applied when reporting, so older rows use the same K.
-/// When and on what the K ratios in EST_SQL were measured (shown in the report).
-const SAVINGS_CALIBRATED: &str = "on 2026-10-28, 270 sampled queries of a repo with ~1.4K files and ~7K symbols";
-const EST_SQL: &str = "max(bytes_out, bytes_out * CASE WHEN cmd IN ('code','cat','head','tail','sed') THEN 1.0 WHEN cmd='brief' THEN 12.49 WHEN cmd='bugs' THEN 4.46 WHEN cmd='callers' THEN 42.17 WHEN cmd='endpoint' THEN 23.99 WHEN cmd='grep' THEN 4.17 WHEN cmd='history' THEN 1.83 WHEN cmd='impact' THEN 94.04 WHEN cmd='outline' THEN 6.66 WHEN cmd='qa' THEN 2.71 WHEN cmd='symbol' THEN 61.36 WHEN cmd='tasks' THEN 2.92 WHEN cmd='text' THEN 6.32 WHEN cmd='trace' THEN 7.13 ELSE 3.0 END)";
+/// The estimate a report counts, per call: the cost of the shell lookups that would have answered the same question
+/// (`max(bytes_out, baseline)`), never more than that, so a short answer saves nothing. Assumptions, stated in the report:
+/// - a lookup done by hand is a few `grep` passes and a few partial `Read`s ("steps" below: a guess per command, not a
+///   measurement; `code`/`cat`/`head`/`tail`/`sed` have none: they cost what a Read of the same span costs);
+/// - the size of one grep pass and one Read is MEASURED on real agent transcripts, as a range: low = typical (median
+///   grep, mean Read), high = a bad day (p90 of each). The report shows the low figure as the headline and the high one
+///   as the top of a range; neither multiplies the size of aix's own answer (an earlier model did, with ratios up to
+///   94x, which counted a cheap, big answer as a huge saving);
+/// - the question would have been asked anyway. Applied when reporting, so older rows use the same model.
+const SAVINGS_CALIBRATED: &str = "on 2026-10-29 from ~6K shell grep/sed/cat/Read results in one project's agent transcripts";
+/// (grep pass bytes, Read bytes) as (low, high)
+const SHELL_GREP: (i64, i64) = (480, 3_500);
+const SHELL_READ: (i64, i64) = (2_800, 8_900);
+/// (command, grep passes, Reads) a hand-made equivalent needs; any other command is 1 + 1
+const SHELL_STEPS: &[(&str, i64, i64)] = &[
+    ("grep", 1, 0), ("text", 1, 0), ("history", 1, 0), ("tasks", 1, 0), ("qa", 1, 0), ("bugs", 1, 1), ("symbol", 1, 1),
+    ("outline", 0, 1), ("callers", 2, 1), ("endpoint", 2, 2), ("trace", 2, 2), ("brief", 2, 2), ("impact", 3, 2),
+    ("code", 0, 0), ("cat", 0, 0), ("head", 0, 0), ("tail", 0, 0), ("sed", 0, 0),
+];
+
+/// SQL for the per-call estimate: the low (typical) or high (p90) end of the range.
+fn est_sql(high: bool) -> String {
+    let (g, r) = if high { (SHELL_GREP.1, SHELL_READ.1) } else { (SHELL_GREP.0, SHELL_READ.0) };
+    let whens: String = SHELL_STEPS.iter().map(|(c, gs, rs)| format!(" WHEN '{c}' THEN {}", gs * g + rs * r)).collect();
+    format!("max(bytes_out, CASE cmd{whens} ELSE {} END)", g + r)
+}
 
 fn log_savings(ix: &Index, cmd: &str, arg: &str, out: &Out, ms: i64) {
     // best effort: never wait for a writer to note a statistic
@@ -1421,23 +1438,24 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
     };
     let since = week_start.unwrap_or(0);
     let ws_key = since;
+    let (est_lo, est_hi) = (est_sql(false), est_sql(true));
     let r = query::rows(
         &ix.conn,
-        &format!("SELECT cmd, count(*), sum(bytes_out), CAST(sum({EST_SQL}) AS INT), CAST(COALESCE(avg(ms), 0) AS INT), COALESCE(max(ms), 0) FROM savings WHERE ts >= ?1 GROUP BY cmd ORDER BY count(*) DESC"),
+        &format!("SELECT cmd, count(*), sum(bytes_out), CAST(sum({est_lo}) AS INT), CAST(COALESCE(avg(ms), 0) AS INT), COALESCE(max(ms), 0) FROM savings WHERE ts >= ?1 GROUP BY cmd ORDER BY count(*) DESC"),
         &[&since],
     );
     let tot = query::rows(
         &ix.conn,
-        &format!("SELECT count(*), COALESCE(sum(bytes_out),0), CAST(COALESCE(sum({EST_SQL}),0) AS INT) FROM savings WHERE ts >= ?1"),
+        &format!("SELECT count(*), COALESCE(sum(bytes_out),0), CAST(COALESCE(sum({est_lo}),0) AS INT), CAST(COALESCE(sum({est_hi}),0) AS INT) FROM savings WHERE ts >= ?1"),
         &[&since],
     );
-    out.emit("== savings (estimate: bytes returned vs grep + partial reads of the files each answer cites; per call: bytes returned x the measured average ratio of each command, see README)");
+    out.emit("== savings (estimate: bytes returned vs the grep passes and Reads a hand-made lookup would have cost; a conservative figure with a range, see the notes below)");
     // the per-command rows come first; the notes and then the measured line close the report (easiest to find)
     let mut tail: Vec<String> = Vec::new();
     let mut measured: Option<String> = None;
     if let Some(t) = tot.first() {
-        let (n, b, e): (i64, i64, i64) =
-            (t[0].parse().unwrap_or(0), t[1].parse().unwrap_or(0), t[2].parse().unwrap_or(0));
+        let (n, b, e, e_hi): (i64, i64, i64, i64) =
+            (t[0].parse().unwrap_or(0), t[1].parse().unwrap_or(0), t[2].parse().unwrap_or(0), t[3].parse().unwrap_or(0));
         out.emit(format!(
             "  {n} queries{}: {} KB returned vs ~{} KB estimated; ~{}K tokens saved (4 bytes/token)",
             if week_start.is_some() { " this week" } else { "" },
@@ -1445,6 +1463,7 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
             e / 1024,
             (e - b).max(0) / 4 / 1000
         ));
+        out.emit(format!("  range: ~{}K to ~{}K tokens saved (typical to p90 cost of the shell lookups replaced; the first is the figure used below)", (e - b).max(0) / 4 / 1000, (e_hi - b).max(0) / 4 / 1000));
         let saved = (e - b).max(0) / 4;
         let span = query::rows(&ix.conn, "SELECT COALESCE(min(ts),0), COALESCE(max(ts),0) FROM savings WHERE ts >= ?1", &[&since]);
         let (mut t0, mut t1): (i64, i64) = span.first().map(|r| (r[0].parse().unwrap_or(0), r[1].parse().unwrap_or(0))).unwrap_or((0, 0));
@@ -1463,8 +1482,8 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
             if w > 0 {
                 let of_week = saved as f64 / w as f64 * 100.0;
                 share = json!({"plan": ix.cfg.plan, "weekly_tokens": w, "pct_of_week": (of_week * 10.0).round() / 10.0});
-                tail.push("  how: each answer is counted as bytes returned x K, K = the average no-aix/aix cost ratio measured per command on ~270 sampled queries (a plain git grep of 60 lines + one partial read; code/cat/head/tail/sed count 1x, commands not sampled 3x); it assumes every query would otherwise have been asked and answered that way".to_string());
-                tail.push(format!("  calibration: the ratios were measured {SAVINGS_CALIBRATED}; they go stale when answer sizes or the repo change, re-measure (and update EST_SQL) after big output changes"));
+                tail.push(format!("  how: each answer is counted as what the shell lookups replacing it would have returned: {} B per grep pass, {} B per Read (typical; p90 {} / {}), times the passes and Reads a hand-made equivalent needs (grep 1+0, callers 2+1, endpoint 2+2, impact 3+2...; code/cat/head/tail/sed 0: they save nothing over a Read); never less than the answer itself. It assumes every query would otherwise have been asked anyway", SHELL_GREP.0, SHELL_READ.0, SHELL_GREP.1, SHELL_READ.1));
+                tail.push(format!("  calibration: the shell sizes were measured {SAVINGS_CALIBRATED}; the pass/Read counts per command are assumptions; re-measure (SHELL_GREP, SHELL_READ, SHELL_STEPS) when your habits change"));
                 let mut per: Vec<(String, i64)> = r.iter().map(|x| (x[0].clone(), x[3].parse::<i64>().unwrap_or(0) - x[2].parse::<i64>().unwrap_or(0))).filter(|(_, v)| *v > 0).collect();
                 per.sort_by(|x, y| y.1.cmp(&x.1));
                 let all_saved: i64 = per.iter().map(|x| x.1).sum();
@@ -1497,7 +1516,7 @@ fn savings_report(ix: &Index, current_week_pct: Option<f64>, out: &mut Out) {
                 measured = Some(format!("  measured {span} (estimate): ~{}K tokens saved (this repo only); to see it against your week set AIX_WEEKLY_TOKENS=N (or `weekly_tokens = N` in config.toml) and pass --currentweek N%", saved / 1000));
             }
             if week_start.is_some() {
-                let all = query::rows(&ix.conn, &format!("SELECT count(*), CAST(COALESCE(sum({EST_SQL})-sum(bytes_out),0) AS INT), COALESCE(min(ts),0) FROM savings"), &[]);
+                let all = query::rows(&ix.conn, &format!("SELECT count(*), CAST(COALESCE(sum({est_lo})-sum(bytes_out),0) AS INT), COALESCE(min(ts),0) FROM savings"), &[]);
                 if let Some(a) = all.first() {
                     let (an, ad, af): (i64, i64, i64) = (a[0].parse().unwrap_or(0), a[1].parse().unwrap_or(0), a[2].parse().unwrap_or(0));
                     tail.push(format!("  all time: {an} queries since {}, ~{}K tokens saved", when(af), ad.max(0) / 4 / 1000));

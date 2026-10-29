@@ -81,8 +81,8 @@ fn currentweek_relates_the_saving_to_this_weeks_usage() {
     let w = [("AIX_WEEKLY_TOKENS", "1_000")];
     let s = e.aix(&["stats", "--savings", "--currentweek", "28%"], &w);
     assert!(s.contains("You have used 28% of your week") && s.contains("% of your usage). Without aix your usage would have been ") && !s.contains("if only half"), "{s}");
-    assert!(s.contains("  how: each answer is counted as bytes returned x K"), "{s}");
-    assert!(s.contains("  calibration: the ratios were measured on ") && s.contains("  cross-check: first reading recorded"), "{s}");
+    assert!(s.contains("  how: each answer is counted as what the shell lookups replacing it would have returned"), "{s}");
+    assert!(s.contains("  calibration: the shell sizes were measured on ") && s.contains("  cross-check: first reading recorded"), "{s}");
     assert!(s.contains("measured ") && s.contains(" (estimate): ~"), "{s}");
     assert!(s.contains("add their points to get the total aix saved you"), "{s}");
     assert!(s.trim_end().lines().last().is_some_and(|l| l.trim_start().starts_with("measured ")), "the measured line stays last: {s}");
@@ -120,4 +120,21 @@ fn savings_measure_from_the_week_start_when_set() {
     assert!(s.contains("(week start Sun 16:00)") && s.contains("queries this week") && s.contains("all time:"), "{s}");
     let bad = e.aix(&["stats", "--savings"], &[("AIX_WEEK_START", "someday")]);
     assert!(bad.contains("not understood"), "{bad}");
+}
+
+#[test]
+fn the_estimate_is_a_conservative_range_never_a_multiple_of_the_answer() {
+    let e = env();
+    for w in ["load_1", "load_2", "load_3"] {
+        e.aix(&["grep", w], &[]);
+    }
+    e.aix(&["code", "main.py:1-20"], &[]);
+    let s = e.aix(&["stats", "--savings", "--json"], &[]);
+    let v: serde_json::Value = serde_json::from_str(s.trim()).unwrap();
+    let h = v["hits"].as_array().unwrap().iter().find(|h| h.get("est_bytes").is_some()).unwrap();
+    let (out, est) = (h["bytes_out"].as_i64().unwrap(), h["est_bytes"].as_i64().unwrap());
+    // 3 greps at 480 B (one pass each) + a reader at 1x: far below the old 4x-of-the-answer-and-up model for small answers
+    assert!(est >= out && est <= out + 3 * 480, "{h}");
+    let text = e.aix(&["stats", "--savings"], &[]);
+    assert!(text.contains("  range: ~") && text.contains("typical to p90"), "{text}");
 }

@@ -30,6 +30,40 @@ MCP tool `aix` (`{"command", "args"}`). Never run `aix update/embed` by hand (`a
 | Index itself | `stats [--savings]` · `schema` · `sql "SELECT ..."` · `patterns` · `privacy-check` · `ignore-check` |
 | Several lookups in one call | `aix 'brief /x ; callers Y ; code F:1-40'` · `batch` · `pipe` |
 
+## You were about to run X: run this (one call, same lines, numbered)
+
+Mined from agents' real shell reads (`scripts/skill-recipes.py` regenerates it; counts = times seen). A hook "deny"
+already carries this answer: use it, do not rerun the shell command.
+
+<!-- recipes -->
+| You were about to run (seen) | Run instead (one bounded call) |
+|---|---|
+| `sed -n A,Bp F.java` (4039) | `aix code F.java:A-B` |
+| `sed -n A,Bp F.tsx` (2278) | `aix code F.tsx:A-B` |
+| `grep -n RE F.java` (1444) | `aix grep 'RE' F.java` |
+| `sed -n A,Bp F.rs` (1236) | `aix code F.rs:A-B` |
+| `grep -n RE F.tsx` (1031) | `aix grep 'RE' F.tsx` |
+| `grep -n RE F.rs` (829) | `aix grep 'RE' F.rs` |
+| `sed -n A,Bp F.sh` (595) | `aix code F.sh:A-B` |
+| `sed -n A,Bp F.py` (520) | `aix code F.py:A-B` |
+| `grep -n RE F.ts` (470) | `aix grep 'RE' F.ts` |
+| `cat F.sh` (366) | `aix cat F.sh` |
+| `sed -n A,Bp F.ts` (363) | `aix code F.ts:A-B` |
+| `grep -rn RE F` (353) | `aix grep 'RE' scripts e2e` |
+| `sed -n A,Bp F.mjs` (343) | `aix code F.mjs:A-B` |
+| `grep -n RE F.py` (293) | `aix grep 'RE' F.py` |
+
+Frequent chains, done in one call:
+
+- sed -> grep (2937x): `aix 'code F:A-B ; grep RE F'` (one call, both answers)
+- grep -> sed (2798x): `aix grep -n RE F -A 20` (match plus body in one call), or `aix 'grep -l RE | code - --around RE'`
+- cat -> grep (369x): `aix grep RE F -C 3` (no whole-file read)
+- grep -> cat (291x): `aix grep -l RE | aix code - --function`
+- wc -> sed (249x): `aix outline F` (members with line ranges), then one `code F:A-B`
+<!-- /recipes -->
+
+Test, build, `git diff`/`git log` runs: `<cmd> 2>&1 | aix put t -`, then `aix grep 'FAIL|error' @t --head 40`.
+
 ## Pipes
 
 ```sh

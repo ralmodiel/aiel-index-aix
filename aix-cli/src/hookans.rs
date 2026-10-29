@@ -156,6 +156,11 @@ fn piped(repo: &Path, probe: &dyn Probe, op: &ReadOp) -> Result<String, String> 
             }
             Filt::TailFrom(k) => cur.into_iter().skip(k.saturating_sub(1)).collect(),
             Filt::WcL => vec![cur.len().to_string()],
+            // ASCII only: cut counts bytes or characters by locale, which agree only there
+            Filt::Cut { from, to } => cur
+                .into_iter()
+                .map(|l| if l.is_ascii() { Ok(l.chars().skip(from - 1).take(to.map_or(usize::MAX, |t| t + 1 - from)).collect()) } else { Err("cut".to_string()) })
+                .collect::<Result<_, _>>()?,
         };
     }
     Ok(cur.iter().map(|l| format!("{l}\n")).collect())

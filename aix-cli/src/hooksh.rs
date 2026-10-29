@@ -102,6 +102,8 @@ pub enum Filt {
     Tail(usize),
     TailFrom(usize),
     WcL,
+    /// `cut -cA-B`: 1-based inclusive character range (`to` None = to the end of line)
+    Cut { from: usize, to: Option<usize> },
 }
 
 impl ReadOp {
@@ -1208,9 +1210,39 @@ fn walk(cx: &mut Cx, pls: &[Pipeline], dialect: Dialect, v: &mut Verdict, reads:
                 // a side-effecting or unrelated command: no exact answer for the whole command
                 *reads = None;
                 v.other = true;
+                if dialect == Dialect::Posix {
+                    if let Some(g) = output_guard(pl) {
+                        v.segs.push(Seg { intent: "bash:big-output".into(), reason: "big-output".into(), data: Some(g), ..Default::default() });
+                    }
+                }
             }
         }
     }
+}
+
+/// A test, build or history command whose whole output lands in the context (no pipe, no redirect, no quiet or
+/// bounding flag): ("cmd:<command>", data-set name, the bounded query to read it with after `| aix put`).
+pub fn output_guard(pl: &Pipeline) -> Option<(String, String, String)> {
+    if pl.stages.len() != 1 || pl.stages[0].writes {
+        return None;
+    }
+    let w: Vec<&str> = pl.stages[0].w.iter().map(|x| x.s.as_str()).collect();
+    let p = base(w.first()?);
+    let has = |f: &[&str]| w.iter().any(|x| f.contains(x) || f.iter().any(|g| g.ends_with('=') && x.starts_with(g)));
+    let sub = w.get(1).copied().unwrap_or("");
+    let (name, q) = match p.as_str() {
+        "cargo" if matches!(sub, "test" | "build" | "clippy" | "check") && !has(&["-q", "--quiet"]) => ("t", "aix grep 'error|warning: unused|FAILED|panicked|test result' @t --head 40"),
+        "gradle" | "gradlew" | "mvn" | "mvnw" if !has(&["-q", "--quiet"]) => ("t", "aix grep 'FAIL|ERROR|BUILD|Tests run' @t --head 40"),
+        "pytest" if !has(&["-q", "--quiet"]) => ("t", "aix grep 'FAILED|ERROR|passed|failed' @t --head 40"),
+        "npm" | "pnpm" | "yarn" | "npx" if matches!(sub, "test" | "run" | "playwright" | "vitest" | "jest" | "tsc" | "build") && !has(&["--silent", "-s", "--reporter=dot", "--reporter=line"]) => {
+            ("t", "aix grep 'fail|error|✘|passed|failed' -i @t --head 40")
+        }
+        "git" if matches!(sub, "log" | "diff" | "show") && !has(&["--stat", "--shortstat", "--name-only", "--name-status", "--oneline", "-n", "--max-count=", "-1", "--quiet", "--exit-code", "--format=", "--pretty="]) && !w.iter().any(|x| x.starts_with('-') && x[1..].parse::<u32>().is_ok()) => {
+            ("d", "aix grep '^[-+]' @d --head 80   (or: git diff --stat first)")
+        }
+        _ => return None,
+    };
+    Some((format!("cmd:{}", w.join(" ")), name.to_string(), q.to_string()))
 }
 
 fn base(p: &str) -> String {
@@ -1651,8 +1683,8 @@ fn parse_grep(prog: &str, args: &[W]) -> Result<G, String> {
                 "context" | "after-context" | "before-context" => {
                     let v = take(val)?;
                     let n = num(Some(&v))?;
-                    if n.parse::<u32>().unwrap_or(99) > 30 {
-                        return Err("flag:context>30".into());
+                    if n.parse::<u32>().unwrap_or(u32::MAX) > 120 {
+                        return Err("flag:context>120".into());
                     }
                     g.flags.extend([a(match name {
                         "context" => "-C",
@@ -1673,8 +1705,8 @@ fn parse_grep(prog: &str, args: &[W]) -> Result<G, String> {
         let fl: Vec<char> = x.s[1..].chars().collect();
         // `-5` (GNU context shorthand)
         if fl.iter().all(|c| c.is_ascii_digit()) {
-            if x.s[1..].parse::<u32>().unwrap_or(99) > 30 {
-                return Err("flag:context>30".into());
+            if x.s[1..].parse::<u32>().unwrap_or(u32::MAX) > 120 {
+                return Err("flag:context>120".into());
             }
             g.flags.extend([a("-C"), a(&x.s[1..])]);
             continue;
@@ -1730,8 +1762,8 @@ fn parse_grep(prog: &str, args: &[W]) -> Result<G, String> {
                 'A' | 'B' | 'C' => {
                     let v = arg_val(k, &mut i);
                     let n = num(v.as_ref())?;
-                    if n.parse::<u32>().unwrap_or(99) > 30 {
-                        return Err("flag:context>30".into());
+                    if n.parse::<u32>().unwrap_or(u32::MAX) > 120 {
+                        return Err("flag:context>120".into());
                     }
                     g.flags.extend([a(format!("-{ch}")), a(n)]);
                     break;
@@ -2655,6 +2687,20 @@ fn filt_of(st: &Stage) -> Option<Filt> {
             Some(if p == "head" { Filt::Head(n) } else { Filt::Tail(n) })
         }
         "wc" if args.len() == 1 && args[0].s == "-l" => Some(Filt::WcL),
+        "cut" => {
+            let spec = match args {
+                [x] => x.s.strip_prefix("-c")?,
+                [f, x] if f.s == "-c" => x.s.as_str(),
+                _ => return None,
+            };
+            let (a, b) = match spec.split_once('-') {
+                Some(r) => r,
+                None => (spec, spec),
+            };
+            let from = if a.is_empty() { 1 } else { a.parse().ok().filter(|n| *n > 0)? };
+            let to = if b.is_empty() { None } else { Some(b.parse().ok().filter(|n| *n >= from)?) };
+            Some(Filt::Cut { from, to })
+        }
         _ => None,
     }
 }
@@ -3261,8 +3307,8 @@ fn sls_to_grep(
         let mut it = c.s.split(',');
         let b = it.next()?.trim().to_string();
         let af = it.next().map(|x| x.trim().to_string()).unwrap_or_else(|| b.clone());
-        if b.parse::<u32>().ok()? > 30 || af.parse::<u32>().ok()? > 30 {
-            return silent(intent, "flag:context>30");
+        if b.parse::<u32>().ok()? > 120 || af.parse::<u32>().ok()? > 120 {
+            return silent(intent, "flag:context>120");
         }
         flags.extend([a("-B"), a(b), a("-A"), a(af)]);
     }
@@ -3654,6 +3700,15 @@ pub fn first_argv(tr: &Tr) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn output_guard_names_unbounded_runs_only() {
+        let g = |c: &str| output_guard(&parse_posix(c)[0]).map(|x| x.1);
+        assert_eq!(g("cargo test -p x").as_deref(), Some("t"));
+        assert_eq!(g("git diff").as_deref(), Some("d"));
+        for c in ["cargo test -q", "git diff --stat", "git log -5", "cargo test | tail -3", "npm test > o.txt", "ls"] {
+            assert_eq!(g(c), None, "{c}");
+        }
+    }
     struct P;
     impl Probe for P {
         fn file(&self, rel: &str) -> Option<FileRow> {

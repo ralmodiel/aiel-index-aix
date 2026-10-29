@@ -149,6 +149,14 @@ fn a_worktree_inherits_the_main_trees_acceptance() {
     git(&r, &["worktree", "add", "-q", wt2.to_str().unwrap(), "-b", "other"]);
     write(&wt2, ".env", "K=zz-other\n");
     assert_eq!(base(&wt2, &["grep", "x"]).status.code(), Some(2));
+    // a secret-like file committed after the acceptance is shared history, not a new decision for a new worktree
+    write(&r, "deploy/secrets.yaml", "kind: Secret\ndata:\n  k: dmFsdWUtcmVhbA==\n");
+    git(&r, &["add", "-A"]);
+    git(&r, &["commit", "-q", "-m", "s"]);
+    let wt3 = d.path().join("wt3");
+    git(&r, &["worktree", "add", "-q", wt3.to_str().unwrap(), "-b", "third"]);
+    let o = base(&wt3, &["grep", "x"]);
+    assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stdout));
 }
 
 #[test]

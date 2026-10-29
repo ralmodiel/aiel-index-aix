@@ -872,6 +872,11 @@ fn real_main() -> Result<()> {
         // before Index::open: a read-only check never creates .aix
         std::process::exit(aix_core::ignorecheck::cli(&repo, cli.db.as_deref(), args, cli.json));
     }
+    // a query over saved data sets (`@name`) never reads the index: no first build, so no .gitignore stop either
+    // (shortcut: any `@name` argument counts, even next to repo targets; those then see an unbuilt index)
+    if !matches!(cli.cmd, Cmd::Update { .. }) && std::env::args().skip(1).any(|a| a.len() > 1 && a.starts_with('@') && !a.contains(char::is_whitespace)) {
+        cli.no_refresh = true;
+    }
     let builds = |unbuilt: bool| match &cli.cmd {
         Cmd::Update { full, .. } => *full || unbuilt,
         Cmd::Card | Cmd::Mcp | Cmd::Sql { .. } | Cmd::Schema => false,

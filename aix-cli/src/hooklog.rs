@@ -320,8 +320,8 @@ fn grep_tool_line(repo: &Path, cwd: &Path, probe: &dyn Probe, input: &Value) -> 
         _ => {
             for k in ["-A", "-B", "-C"] {
                 if let Some(n) = input[k].as_u64() {
-                    if n > 30 {
-                        return Err("flag:context>30".into());
+                    if n > 120 {
+                        return Err("flag:context>120".into());
                     }
                     args.extend([k.to_string(), n.to_string()]);
                 }
@@ -437,16 +437,30 @@ fn append(db: &Path, row: &Value) {
     }
 }
 
+/// A data file at least this big is guarded on its first read.
+const BIG_DATA: u64 = 64 * 1024;
+
 /// A data file read again in this session: nudge to save it once as a data set (`aix put`) and query `@name`.
 pub fn apply_data(d: &mut Decision, seen: &dyn Fn(&str) -> bool) {
     if d.decision != "silent" {
         return;
     }
-    if let Some((abs, name, q)) = d.data.iter().find(|x| seen(&fnv(&x.0))).cloned() {
+    // a test/build/history run (`cmd:`) or a big file is guarded on the first read, other data files on the second
+    // only whole-file reads: a `tail -3` or `grep -m` of a big log is already bounded
+    let whole = matches!(d.intent.as_str(), "bash:cat" | "bash:jq" | "bash:python" | "bash:python3" | "bash:sort" | "bash:less");
+    let big = |p: &str| p.starts_with("cmd:") || whole && std::fs::metadata(p).is_ok_and(|m| m.len() >= BIG_DATA);
+    if let Some((abs, name, q)) = d.data.iter().find(|x| seen(&fnv(&x.0)) || big(&x.0)).cloned() {
         d.decision = "nudge".into();
+        if let Some(cmd) = abs.strip_prefix("cmd:") {
+            d.intent = "guard:output".into();
+            d.suggestion = format!("{cmd} 2>&1 | aix put {name} -");
+            d.notes = vec![format!("its whole output would land in context; saved once, read the verdict: {q} (bounded)")];
+            return;
+        }
         d.intent = format!("data:{}", d.intent.split(':').nth(1).unwrap_or("read"));
         d.suggestion = format!("aix put {name} {}", quote_word(&abs));
-        d.notes = vec![format!("this file was read before in this session; after saving it once: {q} (bounded, redacted)")];
+        let why = if seen(&fnv(&abs)) { "this file was read before in this session".to_string() } else { format!("this file is {} KB", std::fs::metadata(&abs).map(|m| m.len() / 1024).unwrap_or(0)) };
+        d.notes = vec![format!("{why}; after saving it once: {q} (bounded, redacted)")];
     }
 }
 

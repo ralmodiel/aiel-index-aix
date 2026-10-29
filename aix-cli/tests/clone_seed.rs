@@ -207,3 +207,24 @@ fn repeated_reads_name_the_bounded_way_and_stats_count_followed_nudges() {
     let s = out(&o);
     assert!(s.contains("nudges followed: 3") && s.contains("open: 1"), "{s}");
 }
+
+#[test]
+fn a_query_over_a_saved_set_needs_no_index_and_so_no_gitignore_decision() {
+    let t = tempfile::tempdir().unwrap();
+    let d = t.path();
+    let r = d.join("proj");
+    write(&r, "src/m1.rs", "pub fn f1() {}\n");
+    write(&r, "frontend/src/app.ts", "export const app = 1;\n");
+    write(&r, "frontend/node_modules/x/index.js", "module.exports = 1;\n"); // tracked: the first build must stop
+    git(&r, &["init", "-q", "-b", "main"]);
+    git(&r, &["add", "-A"]);
+    git(&r, &["commit", "-q", "-m", "init"]);
+    let rs = r.display().to_string();
+    let o = aix_in(d, &["--repo", &rs, "put", "t", "-"], Some("alpha\nbeta needle\n"));
+    assert!(o.status.success(), "{}", out(&o));
+    let o = aix_in(d, &["--repo", &rs, "grep", "needle", "@t"], None);
+    assert!(o.status.success() && out(&o).contains("beta needle") && !out(&o).contains("STOP"), "{}", out(&o));
+    // the set query built nothing: a repo query still waits for the user's decision
+    let o = aix_in(d, &["--repo", &rs, "grep", "f1"], None);
+    assert_eq!(o.status.code(), Some(2), "{}", out(&o));
+}

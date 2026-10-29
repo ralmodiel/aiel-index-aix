@@ -1266,10 +1266,18 @@ pub fn would_stop(repo: &Path) -> Option<usize> {
         return None;
     }
     let r = scan(repo);
-    if r.findings.is_empty() || read_accept_or_main(repo).is_some_and(|(h, _)| h == r.hash()) {
+    if r.findings.is_empty() || read_accept(repo).is_some_and(|(h, _)| h == r.hash()) || parent_accepts(repo, &r) {
         return None;
     }
     Some(r.findings.len())
+}
+
+/// The parent checkout (`parent_repo`) accepted these findings: the same hash, or each finding here was accepted
+/// there item by item or is a committed file (`tracked-secret`: shared history the parent already indexes, so a
+/// worktree adds nothing new to decide). A new untracked or ignore-rule finding still asks.
+pub fn parent_accepts(repo: &Path, r: &Report) -> bool {
+    let Some((h, items)) = parent_repo(repo).and_then(|m| read_accept(&m)) else { return false };
+    h == r.hash() || r.findings.iter().all(|f| f.kind == "tracked-secret" || items.contains(&f.item_hash()))
 }
 
 /// The STOP block: findings (capped), the STOP line, the commands.
@@ -1314,8 +1322,8 @@ pub fn gate(repo: &Path, db: &Path, accept: bool) -> Result<(), String> {
         PASSED.store(true, Ordering::Relaxed);
         return Ok(());
     }
-    // a linked worktree (or a local clone) of a repo whose (identical) findings were accepted there
-    if parent_repo(repo).and_then(|m| read_accept(&m)).is_some_and(|(h, _)| h == r.hash()) {
+    // a linked worktree (or a local clone) of a repo whose findings were accepted there
+    if parent_accepts(repo, &r) {
         PASSED.store(true, Ordering::Relaxed);
         return Ok(());
     }
